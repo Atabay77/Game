@@ -1,5 +1,4 @@
-
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -448,7 +447,7 @@
         let isPlaying = false; let isPaused = false; let animationId; let cameraShake = 0;
         let score = 0; let level = 1; let xp = 0; let xpToNextLevel = 100; let frameCount = 0; let gameTime = 0;
         let sessionCores = 0; 
-        let bossData = { active: false, currentBoss: null, 60: false, 120: false, 180: false };
+        let bossData = { active: false, currentBoss: null, 120: false, 240: false, 360: false };
         
         let player, projectiles = [], enemies = [], particles = [], gems = [], floatingTexts = [], orbitals = [], scenery = [], spells = [], pickups = [];
         let synergies = { flamethrowerDrone: false, blackholeMage: false }; 
@@ -744,13 +743,13 @@
                 
                 switch(type) {
                     case 1: 
-                        this.radius = 12; this.color = '#ffcc00'; this.maxHealth = 20 * hpScale; this.baseSpeed = Math.random() * 0.8 + 1.2; this.xpValue = 10; this.damage = 10 * dmgScale; this.name = "Böcek"; break;
+                        this.radius = 12; this.color = '#ffcc00'; this.maxHealth = 20 * hpScale; this.baseSpeed = Math.random() * 0.5 + 0.8; this.xpValue = 10; this.damage = 10 * dmgScale; this.name = "Böcek"; break;
                     case 2: 
-                        this.radius = 35; this.color = '#aa00ff'; this.maxHealth = 150 * hpScale; this.baseSpeed = Math.random() * 0.2 + 0.3; this.xpValue = 50; this.damage = 30 * dmgScale; this.name = "Golyat"; break;
+                        this.radius = 35; this.color = '#aa00ff'; this.maxHealth = 150 * hpScale; this.baseSpeed = Math.random() * 0.15 + 0.2; this.xpValue = 50; this.damage = 30 * dmgScale; this.name = "Golyat"; break;
                     case 3: 
-                        this.radius = 18; this.color = '#00ffcc'; this.maxHealth = 40 * hpScale; this.baseSpeed = 0.6; this.xpValue = 20; this.damage = 15 * dmgScale; this.name = "Gözcü"; this.shootTimer = Math.random() * 100; break;
+                        this.radius = 18; this.color = '#00ffcc'; this.maxHealth = 40 * hpScale; this.baseSpeed = 0.4; this.xpValue = 20; this.damage = 15 * dmgScale; this.name = "Gözcü"; this.shootTimer = Math.random() * 100; break;
                     default: 
-                        this.radius = 16; this.color = '#ff0055'; this.maxHealth = 35 * hpScale; this.baseSpeed = Math.random() * 0.4 + 0.6; this.xpValue = 15; this.damage = 15 * dmgScale; this.name = "Drone";
+                        this.radius = 16; this.color = '#ff0055'; this.maxHealth = 35 * hpScale; this.baseSpeed = Math.random() * 0.3 + 0.4; this.xpValue = 15; this.damage = 15 * dmgScale; this.name = "Drone";
                 }
                 
                 this.speed = this.baseSpeed; this.health = this.maxHealth; this.freezeTimer = 0; this.poisonTimer = 0; this.poisonDamage = 0;
@@ -1148,17 +1147,17 @@
                 enemies.push(new Enemy(x, y, type));
             }
 
-            // Daha hızlı Boss çıkma aralığı (1. dk, 2. dk, 3. dk)
-            if (gameTime === 60 && !bossData.active && !bossData[60]) {
-                bossData.active = true; bossData[60] = true;
-                bossData.currentBoss = new Boss(player.x + 800, player.y, 'GOLYAT_PRIME'); enemies.push(bossData.currentBoss);
-            }
+            // Boss çıkma aralığı (2. dk, 4. dk, 6. dk)
             if (gameTime === 120 && !bossData.active && !bossData[120]) {
                 bossData.active = true; bossData[120] = true;
+                bossData.currentBoss = new Boss(player.x + 800, player.y, 'GOLYAT_PRIME'); enemies.push(bossData.currentBoss);
+            }
+            if (gameTime === 240 && !bossData.active && !bossData[240]) {
+                bossData.active = true; bossData[240] = true;
                 bossData.currentBoss = new Boss(player.x + 800, player.y, 'CYBER_WORM'); enemies.push(bossData.currentBoss);
             }
-            if (gameTime === 180 && !bossData.active && !bossData[180]) {
-                bossData.active = true; bossData[180] = true;
+            if (gameTime === 360 && !bossData.active && !bossData[360]) {
+                bossData.active = true; bossData[360] = true;
                 bossData.currentBoss = new Boss(player.x, player.y - 800, 'NEXUS'); enemies.push(bossData.currentBoss);
             }
         }
@@ -1249,7 +1248,7 @@
             
             score = 0; level = 1 + (metaData.upgrades.startLevel || 0); xp = 0; xpToNextLevel = 100 * Math.pow(1.3, level-1); 
             frameCount = 0; gameTime = 0; isPaused = false; sessionCores = 0; 
-            bossData = { active: false, currentBoss: null, 60: false, 120: false, 180: false };
+            bossData = { active: false, currentBoss: null, 120: false, 240: false, 360: false };
             synergies = { flamethrowerDrone: false, blackholeMage: false }; achievements = { level10: false, survive3Min: false };
 
             joyActive = false; joyKnob.style.transform = `translate(0px, 0px)`; joyVector = { x: 0, y: 0 };
@@ -1282,4 +1281,10 @@
 
     </script>
 </body>
-</html>  
+</html>
+
+
+
+
+
+
