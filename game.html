@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Survival - Ultimate Sinerji Edition</title>
+    <style>
+        body {
+            margin: 0; padding: 0; overflow: hidden; background-color: #05070a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white; user-select: none; -webkit-user-select: none; touch-action: none;
+        }
+        
+        /* CRT Scanline Efekti - Görsel Geliştirme */
+        body::after {
+            content: " "; display: block; position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 99; background-size: 100% 3px, 6px 100%; pointer-events: none; opacity: 0.4;
+        }
+
+        #gameCanvas { display: block; width: 100vw; height: 100vh; }
+        
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; z-index: 100;
+        }
+
+        .top-bar {
+            padding: 20px; display: flex; justify-content: space-between; align-items: flex-start;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.9); background: linear-gradient(180deg, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0) 100%);
+        }
+        .stats { font-size: 1.2rem; font-weight: bold; }
+        .stat-line { margin-bottom: 5px; }
+
+        /* Joystick Stilleri */
+        #joystickZone {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 150px; height: 150px; pointer-events: auto; z-index: 101;
+        }
+        #joystickBase {
+            width: 100%; height: 100%; background: rgba(0, 229, 255, 0.05);
+            border: 2px solid rgba(0, 229, 255, 0.2); border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; position: relative;
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.1) inset;
+        }
+        #joystickKnob {
+            width: 60px; height: 60px; background: rgba(0, 229, 255, 0.8);
+            border-radius: 50%; position: absolute; box-shadow: 0 0 20px rgba(0, 229, 255, 0.8);
+            transition: transform 0.05s linear;
+        }
+
+        /* RPG İstatistik Paneli */
+        #rpg-panel-container { position: absolute; left: 20px; top: 90px; pointer-events: auto; z-index: 101; }
+        #toggleStatsBtn {
+            background: rgba(0, 229, 255, 0.1); border: 1px solid #00e5ff; color: #00e5ff;
+            padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-bottom: 10px;
+            backdrop-filter: blur(5px); transition: all 0.2s; font-size: 1rem; text-shadow: 0 0 5px #00e5ff;
+        }
+        #toggleStatsBtn:hover { background: rgba(0, 229, 255, 0.4); color: white; }
+        #rpg-panel {
+            background: rgba(10, 10, 15, 0.85); border: 1px solid #00e5ff; border-radius: 10px;
+            padding: 15px; box-shadow: 0 0 20px rgba(0, 229, 255, 0.3); backdrop-filter: blur(10px);
+            font-size: 0.95rem; color: #c5c6c7; transition: opacity 0.3s, transform 0.3s;
+        }
+        .rpg-panel-hidden { opacity: 0; transform: translateX(-20px); pointer-events: none; }
+        .rpg-stat { margin-bottom: 8px; display: flex; justify-content: space-between; gap: 20px; }
+        .rpg-val { color: #00e5ff; font-weight: bold; }
+        .rpg-val.max { color: #ff0055; text-shadow: 0 0 5px #ff0055; }
+
+        /* Butonlar */
+        .pause-btn {
+            position: absolute; right: 20px; top: 20px; background: rgba(0, 229, 255, 0.1);
+            border: 2px solid #00e5ff; color: #00e5ff; width: 50px; height: 50px;
+            border-radius: 10px; font-size: 1.5rem; cursor: pointer; display: flex;
+            justify-content: center; align-items: center; backdrop-filter: blur(5px);
+            transition: all 0.2s; pointer-events: auto; z-index: 101; box-shadow: 0 0 10px rgba(0,229,255,0.2);
+        }
+        .pause-btn:hover { background: rgba(0, 229, 255, 0.4); color: white; transform: scale(1.1); box-shadow: 0 0 20px rgba(0,229,255,0.6); }
+        .ai-btn {
+            background: linear-gradient(45deg, #bf00ff, #00e5ff); box-shadow: 0 0 20px rgba(191, 0, 255, 0.6);
+            color: white; border: none; padding: 12px 25px; font-size: 1.2rem; font-weight: bold;
+            border-radius: 25px; cursor: pointer; transition: all 0.2s; margin-top: 20px;
+        }
+        .ai-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(0, 229, 255, 0.9); }
+        .ai-btn:disabled { filter: grayscale(1); cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        #aiTacticText { margin-top: 15px; font-size: 1.1rem; color: #00e5ff; font-style: italic; max-width: 400px; text-align: center; min-height: 50px; }
+        #epicTaleArea { max-width: 600px; margin: 20px; font-size: 1.1rem; color: #ffaa00; font-style: italic; text-align: center; line-height: 1.5; text-shadow: 0 0 10px rgba(255, 170, 0, 0.3); }
+
+        .xp-container { width: 100%; height: 10px; background-color: #1a1a24; position: absolute; top: 0; left: 0; z-index: 10; }
+        .xp-bar { height: 100%; width: 0%; background-color: #00ffaa; box-shadow: 0 0 20px #00ffaa; transition: width 0.3s ease-out; }
+        #timerVal { font-size: 2.2rem; color: #fff; text-shadow: 0 0 15px #00e5ff; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-weight: bold; font-family: monospace; }
+
+        /* Sinerji Bildirimi */
+        #synergyBanner {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(90deg, rgba(255,0,85,0), rgba(255,0,85,0.8), rgba(255,0,85,0));
+            color: white; font-size: 1.5rem; font-weight: bold; padding: 10px 50px;
+            text-shadow: 0 0 10px white; display: none; z-index: 105; text-align: center;
+            animation: slideDown 0.5s ease-out, glowPulse 1s infinite alternate; pointer-events: none;
+        }
+        @keyframes slideDown { from { top: 0; opacity: 0; } to { top: 80px; opacity: 1; } }
+        @keyframes glowPulse { from { box-shadow: 0 0 10px #ff0055; } to { box-shadow: 0 0 30px #ffaa00; } }
+
+        /* Ekranlar */
+        .overlay-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(5, 5, 10, 0.92); display: none; flex-direction: column;
+            justify-content: center; align-items: center; pointer-events: auto; backdrop-filter: blur(10px); z-index: 110;
+        }
+        h1 { font-size: 4rem; color: #ff0055; text-shadow: 0 0 30px #ff0055; margin-bottom: 10px; text-align: center; text-transform: uppercase; letter-spacing: 2px;}
+        h2 { font-size: 3rem; color: #00e5ff; text-shadow: 0 0 20px #00e5ff; margin-bottom: 30px; text-align: center; text-transform: uppercase; }
+        p { font-size: 1.5rem; margin-bottom: 30px; color: #c5c6c7; text-align: center; }
+        
+        button.main-btn {
+            padding: 15px 40px; font-size: 1.5rem; font-weight: bold; color: #05070a;
+            background-color: #00ffaa; border: none; border-radius: 5px; cursor: pointer;
+            box-shadow: 0 0 20px #00ffaa; transition: all 0.2s; margin: 10px; text-transform: uppercase;
+        }
+        button.main-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px #ffffff; background-color: #ffffff; }
+
+        /* Kartlar */
+        .cards-container { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; max-width: 900px; }
+        .upgrade-card {
+            background: rgba(20, 20, 30, 0.9); border: 2px solid #00e5ff; border-radius: 10px;
+            padding: 20px; width: 220px; text-align: center; cursor: pointer;
+            transition: all 0.2s; box-shadow: 0 0 15px rgba(0, 229, 255, 0.1); position: relative;
+            overflow: hidden;
+        }
+        .upgrade-card.max-tier { border-color: #ff0055; box-shadow: 0 0 30px rgba(255, 0, 85, 0.3) inset; }
+        .upgrade-card.max-tier::before {
+            content: "MAX SİNERJİ POTANSİYELİ"; position: absolute; top: 0; left: 0; width:100%; background: #ff0055; 
+            color: white; font-weight: bold; padding: 4px 0; font-size: 0.7rem; letter-spacing: 1px;
+        }
+        .upgrade-card:hover { transform: translateY(-10px) scale(1.05); box-shadow: 0 0 30px rgba(0, 229, 255, 0.6); background: rgba(30, 30, 45, 1); z-index: 2; }
+        .upgrade-card.max-tier:hover { box-shadow: 0 0 40px rgba(255, 0, 85, 0.8); }
+        .upgrade-icon { font-size: 3.5rem; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5)); }
+        .upgrade-title { font-size: 1.2rem; font-weight: bold; color: #00e5ff; margin-bottom: 10px; margin-top:15px; }
+        .upgrade-card.max-tier .upgrade-title { color: #ff0055; text-shadow: 0 0 5px #ff0055;}
+        .upgrade-desc { font-size: 0.9rem; color: #aaa; line-height: 1.4;}
+
+        /* Karargah (Hub) Özel Stilleri */
+        .hub-stats { display: flex; gap: 40px; margin-bottom: 30px; }
+        .hub-stat-box { background: rgba(0,255,170,0.05); border: 1px solid #00ffaa; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 0 15px rgba(0,255,170,0.1) inset;}
+        .core-icon { color: #00ffaa; font-weight: bold; text-shadow: 0 0 15px #00ffaa; }
+        .hub-upgrades { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 600px; margin-bottom: 20px; }
+        .hub-upg-btn {
+            background: rgba(20,20,30,0.9); border: 1px solid #00e5ff; color: white; padding: 15px; border-radius: 5px;
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s;
+        }
+        .hub-upg-btn:hover:not(:disabled) { background: rgba(0,229,255,0.2); transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
+        .hub-upg-btn:disabled { opacity: 0.5; cursor: not-allowed; border-color: #555; }
+
+        /* Hacker/Boss Uyarısı */
+        #bossWarning {
+            position: absolute; top: 25%; left: 50%; transform: translateX(-50%);
+            font-size: 3.5rem; font-weight: bold; color: #ff0055; text-shadow: 0 0 40px #ff0055;
+            display: none; z-index: 106; text-align: center; animation: flashWarning 0.8s infinite; pointer-events: none; letter-spacing: 5px;
+        }
+        @keyframes flashWarning { 0% { opacity: 1; transform: translateX(-50%) scale(1); } 50% { opacity: 0; transform: translateX(-50%) scale(1.1); } 100% { opacity: 1; transform: translateX(-50%) scale(1); } }
+
+        /* MOBİL RESPONSIVE */
+        @media (max-width: 768px) {
+            .top-bar { padding: 10px; }
+            .stats { font-size: 1.1rem; } 
+            .stat-line { margin-bottom: 5px; }
+            #timerVal { font-size: 1.8rem; top: 70px; } 
+            .pause-btn { width: 45px; height: 45px; font-size: 1.3rem; top: 60px; right: 15px; }
+            #rpg-panel-container { top: 130px; left: 10px; }
+            #toggleStatsBtn { font-size: 1rem; padding: 8px 12px; margin-bottom: 5px; } 
+            #rpg-panel { padding: 12px; font-size: 0.9rem; }
+            .rpg-stat { margin-bottom: 5px; }
+
+            .cards-container { flex-direction: column; gap: 10px; width: 95%; max-width: 400px; margin-bottom: 10px; max-height: 60vh; overflow-y: auto; }
+            .upgrade-card { width: 100%; padding: 12px 15px; display: flex; align-items: center; text-align: left; box-sizing: border-box; min-height: 75px; }
+            .upgrade-card.max-tier::before { display: none; } 
+            .upgrade-icon { font-size: 2.2rem; margin-bottom: 0; margin-right: 15px; }
+            .upgrade-card > div:not(.upgrade-icon) { flex: 1; }
+            .upgrade-title { font-size: 1.1rem; margin-bottom: 3px; margin-top: 0;}
+            .upgrade-desc { font-size: 0.85rem; }
+
+            h1 { font-size: 2.5rem; margin-bottom: 5px; }
+            h2 { font-size: 1.8rem; margin-bottom: 10px; }
+            p { font-size: 1.1rem; margin-bottom: 10px; }
+            .ai-btn { padding: 10px 20px; font-size: 1.1rem; margin-top: 5px; }
+            button.main-btn { padding: 12px 25px; font-size: 1.2rem; margin: 10px; }
+
+            #joystickZone { width: 140px; height: 140px; bottom: 20px; }
+            #joystickKnob { width: 55px; height: 55px; }
+            #epicTaleArea { font-size: 1rem; margin: 10px; }
+            .hub-stats { flex-direction: column; gap: 10px; }
+            .hub-upgrades { grid-template-columns: 1fr; }
+            #bossWarning { font-size: 2rem; top: 30%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="bossWarning">ANOMALİ TESPİT EDİLDİ</div>
+    <div id="synergyBanner">SİNERJİ AKTİF: CEHENNEM DRONE'U</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div class="xp-container"><div class="xp-bar" id="xpBar"></div></div>
+        <div id="timerVal">00:00</div>
+        
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat-line" style="color: #ff4757; text-shadow: 0 0 5px #ff4757;">CAN: <span id="healthVal">100</span> / <span id="maxHealthVal">100</span></div>
+                <div class="stat-line" style="color: #feca57; text-shadow: 0 0 5px #feca57;">SKOR: <span id="scoreVal">0</span></div>
+                <div class="stat-line" style="color: #00ffaa; text-shadow: 0 0 5px #00ffaa;">ÇEKİRDEK: <span id="coreValUI">0</span></div>
+            </div>
+            <div class="stats" style="text-align: right; color: #00e5ff; text-shadow: 0 0 5px #00e5ff;">
+                SEVİYE: <span id="levelVal">1</span>
+            </div>
+        </div>
+
+        <button class="pause-btn" id="pauseBtnUI" onclick="togglePause()" style="display:none;">⏸️</button>
+
+        <div id="joystickZone" style="display:none;">
+            <div id="joystickBase">
+                <div id="joystickKnob"></div>
+            </div>
+        </div>
+
+        <div id="rpg-panel-container" style="display:none;">
+            <button id="toggleStatsBtn" onclick="toggleRPGPanel()">👁️ İstatistikleri Göster</button>
+            <div id="rpg-panel" class="rpg-panel-hidden"></div>
+        </div>
+    </div>
+
+    <!-- Karargah (Hub) Ekranı -->
+    <div id="hubScreen" class="overlay-screen" style="display: flex;">
+        <h2>SİBER KARARGAH</h2>
+        <div class="hub-stats">
+            <div class="hub-stat-box">
+                <div style="font-size: 1rem; color:#aaa">Kripto Çekirdekler</div>
+                <div style="font-size: 2.5rem;" class="core-icon">💽 <span id="hubCoreCount">0</span></div>
+            </div>
+            <div class="hub-stat-box">
+                <div style="font-size: 1rem; color:#aaa">En İyi Hayatta Kalma</div>
+                <div style="font-size: 2.5rem; color: #00e5ff; font-family: monospace; text-shadow: 0 0 15px #00e5ff;" id="hubBestTime">00:00</div>
+            </div>
+        </div>
+        
+        <p style="font-size:1.1rem; color:#00ffaa; text-transform: uppercase; letter-spacing: 2px;">Kalıcı Sürüm Yükseltmeleri</p>
+        <div class="hub-upgrades" id="hubUpgradesContainer"></div>
+        <button class="main-btn" onclick="startGame()">SİSTEME BAĞLAN</button>
+    </div>
+
+    <!-- Menü Ekranları -->
+    <div id="levelUpScreen" class="overlay-screen">
+        <h2>SÜRÜM YÜKSELTİLDİ</h2>
+        <p>Bir yetenek, modül veya <span style="color: #ff0055; font-weight:bold;">BÜYÜ PROTOKOLÜ</span> seç:</p>
+        <div class="cards-container" id="upgradeOptions"></div>
+    </div>
+
+    <div id="pauseScreen" class="overlay-screen">
+        <h2>SİSTEM DURAKLATILDI</h2>
+        <p>Hayatta Kalma Süresi: <span id="pauseTimeVal" style="color:#00e5ff; font-family:monospace;">00:00</span></p>
+        <button class="main-btn" onclick="togglePause()">▶️ Devam Et</button>
+        <button class="ai-btn" onclick="getAITactic()">✨ B.O.B'dan Taktik İste</button>
+        <div id="aiTacticText"></div>
+    </div>
+
+    <div id="gameOverScreen" class="overlay-screen">
+        <h1>SİSTEM ÇÖKTÜ</h1>
+        <p>Süre: <span id="finalTime" style="color:#00e5ff; font-family:monospace;">00:00</span> | Seviye: <span id="finalLevel" style="color:#00e5ff;">1</span></p>
+        <p style="color: #00ffaa; font-weight:bold; font-size:1.8rem; margin-top:-15px; text-shadow: 0 0 15px #00ffaa;">Kazanılan Çekirdek: +<span id="finalCores">0</span></p>
+        <div id="epicTaleArea"></div>
+        <button id="epicBtn" class="ai-btn" onclick="requestEpicTale()" style="margin-bottom: 20px;">Destanımı Yaz ✨</button>
+        <button class="main-btn" onclick="goToHub()">Karargaha Dön</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Güvenli UI Eleman Seçimleri
+        const ui = {
+            health: document.getElementById('healthVal'), maxHealth: document.getElementById('maxHealthVal'),
+            score: document.getElementById('scoreVal'), cores: document.getElementById('coreValUI'),
+            level: document.getElementById('levelVal'), xpBar: document.getElementById('xpBar'),
+            timer: document.getElementById('timerVal'), bossWarn: document.getElementById('bossWarning'),
+            joyZone: document.getElementById('joystickZone'), pauseBtn: document.getElementById('pauseBtnUI'),
+            rpgPanelCont: document.getElementById('rpg-panel-container'), rpgPanel: document.getElementById('rpg-panel'),
+            upgradeOptions: document.getElementById('upgradeOptions'), pauseTimeVal: document.getElementById('pauseTimeVal'),
+            synergyBanner: document.getElementById('synergyBanner')
+        };
+
+        const screens = {
+            hub: document.getElementById('hubScreen'), levelUp: document.getElementById('levelUpScreen'),
+            pause: document.getElementById('pauseScreen'), gameOver: document.getElementById('gameOverScreen')
+        };
+
+        // --- FOV / KAMERA YAKINLAŞTIRMASI ---
+        let globalZoom = 1.0;
+        function resizeCanvas() { 
+            if (window.innerWidth < 768) { 
+                globalZoom = 650 / window.innerWidth; // Mobilde FOV daraltıldı (Eskiden 800'dü)
+            } else { 
+                globalZoom = 0.9; // PC'de FOV iyice daraltıldı, karakter daha büyük görünecek (Eskiden 1.4'tü)
+            }
+            canvas.width = window.innerWidth * globalZoom; 
+            canvas.height = window.innerHeight * globalZoom; 
+        }
+        window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+        // --- META PROGRESSION (KARARGAH) ---
+        let metaData = JSON.parse(localStorage.getItem('neonMeta')) || { cores: 0, bestTime: 0, upgrades: { dmg: 0, health: 0, speed: 0, lifesteal: 0 } };
+        const hubUpgrades = {
+            dmg: { title: "Plazma Çekirdeği", baseCost: 10, maxLvl: 10, bonusText: "+5 Hasar", apply: (p, lvl) => p.damage += (lvl * 5) },
+            health: { title: "Titanyum Gövde", baseCost: 10, maxLvl: 10, bonusText: "+20 Maks Can", apply: (p, lvl) => { p.maxHealth += (lvl * 20); p.health = p.maxHealth; } },
+            speed: { title: "Kinetik İticiler", baseCost: 15, maxLvl: 5, bonusText: "+0.15 Hız", apply: (p, lvl) => p.baseSpeed += (lvl * 0.15) },
+            lifesteal: { title: "Vampir Protokolü", baseCost: 25, maxLvl: 5, bonusText: "+%1 Can Çalma", apply: (p, lvl) => p.lifesteal += (lvl * 0.01) }
+        };
+
+        function saveMeta() { localStorage.setItem('neonMeta', JSON.stringify(metaData)); }
+        function renderHub() {
+            document.getElementById('hubCoreCount').textContent = metaData.cores;
+            document.getElementById('hubBestTime').textContent = formatTime(metaData.bestTime);
+            const container = document.getElementById('hubUpgradesContainer'); container.innerHTML = '';
+            for (const [key, upg] of Object.entries(hubUpgrades)) {
+                let curLvl = metaData.upgrades[key]; let cost = upg.baseCost + (curLvl * upg.baseCost); let isMax = curLvl >= upg.maxLvl;
+                const btn = document.createElement('button'); btn.className = 'hub-upg-btn'; btn.disabled = isMax || metaData.cores < cost;
+                btn.innerHTML = `<div><div style="font-weight:bold; font-size:1.1rem; color:#00e5ff">${upg.title} [Sv ${curLvl}/${upg.maxLvl}]</div><div style="font-size:0.85rem; color:#aaa">${upg.bonusText}</div></div>
+                                 <div style="font-size:1.2rem; font-weight:bold; color:${isMax ? '#ff0055' : '#00ffaa'}">${isMax ? 'MAX' : '💽 ' + cost}</div>`;
+                btn.onclick = () => { metaData.cores -= cost; metaData.upgrades[key]++; saveMeta(); renderHub(); };
+                container.appendChild(btn);
+            }
+        }
+        function goToHub() {
+            screens.gameOver.style.display = 'none'; screens.hub.style.display = 'flex';
+            ui.joyZone.style.display = 'none'; ui.pauseBtn.style.display = 'none'; ui.rpgPanelCont.style.display = 'none';
+            renderHub();
+        }
+
+        // --- GEMINI API ---
+        const apiKey = ""; 
+        async function fetchGeminiWithRetry(promptText, systemText = "") {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            let payload = { contents: [{ parts: [{ text: promptText }] }] };
+            if (systemText) payload.systemInstruction = { parts: [{ text: systemText }] };
+            const delays = [1000, 2000, 4000];
+            for (let i = 0; i <= delays.length; i++) {
+                try {
+                    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(); const result = await response.json(); return result.candidates?.[0]?.content?.parts?.[0]?.text || "...";
+                } catch (error) {
+                    if (i === delays.length) return "Sinyal zayıf..."; await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        }
+        async function getAITactic() {
+            const tacticText = document.getElementById('aiTacticText'); tacticText.textContent = "B.O.B analiz ediyor... 🤖";
+            const prompt = `Seviye ${level}. ${Math.floor(player.health)} can. ${formatTime(gameTime)} süre.`;
+            const system = "Sen B.O.B isimli iğneleyici, kibirli ama yardımcı siberpunk drone'sun. Oyuncuya tek kısa cümle taktik ver.";
+            const reply = await fetchGeminiWithRetry(prompt, system); tacticText.textContent = `"${reply.trim()}"`;
+        }
+        async function requestEpicTale() {
+            const btn = document.getElementById('epicBtn'); const area = document.getElementById('epicTaleArea'); btn.disabled = true; btn.textContent = "Ağıt Yazılıyor... ⏳";
+            const prompt = `Seviye ${level}, ${formatTime(gameTime)} dakika hayatta kalındı. Ölüm sebebi: Böcekler/Tanklar.`;
+            const system = "Sen B.O.B isimli drone'sun. Sahibinin(oyuncunun) arkasından iğneleyici ama dramatik kısa bir ölüm ağıtı yaz.";
+            const reply = await fetchGeminiWithRetry(prompt, system); area.textContent = reply; btn.style.display = 'none';
+        }
+        async function requestAIUpgrade() {
+            const btn = document.getElementById('aiUpgradeBtn');
+            btn.disabled = true; btn.textContent = "Sentezleniyor... 🧬";
+            
+            const prompt = `Oyuncu seviye ${level}. Rastgele, absürt ama çok faydalı siberpunk temalı BİR ADET eşsiz yetenek uydur. Formatı sadece: "İsim: [Yetenek İsmi] - Açıklama: [Ne işe yaradığı]". Örnek: "İsim: Kuantum Zıplaması - Açıklama: Hasarı artırır."`;
+            const reply = await fetchGeminiWithRetry(prompt);
+            
+            player.damage += 20; 
+            player.heal(50);
+            
+            floatingTexts.push(new FloatingText(player.x, player.y - 40, "AI SENTEZİ BAŞARILI", true));
+            alert("AI Sentezi: \n" + reply);
+            
+            resumeGame();
+            btn.disabled = false; btn.textContent = "✨ Yapay Zeka Sentezi İste ✨";
+        }
+        async function triggerDroneChat(context) {
+            if(!drone || drone.isThinking) return; drone.isThinking = true;
+            const system = "Sen B.O.B, oyuncunun alaycı siber drone'usun. Sadece 3-5 kelimelik kısa laf at.";
+            const prompt = `Durum: ${context}. Kısa tepki ver.`;
+            const reply = await fetchGeminiWithRetry(prompt, system);
+            if(reply !== "Sinyal zayıf...") { drone.speechText = reply.trim().replace(/["']/g, ""); drone.speechTimer = 180; }
+            drone.isThinking = false;
+        }
+
+        // --- JOYSTICK ---
+        const joyBase = document.getElementById('joystickBase'); const joyKnob = document.getElementById('joystickKnob');
+        let joyActive = false; let joyVector = { x: 0, y: 0 }; let joyAngle = 0; let joyBaseRect = null;
+        function startJoy(e) { joyActive = true; joyBaseRect = joyBase.getBoundingClientRect(); moveJoy(e); }
+        function moveJoy(e) {
+            if (!joyActive) return; if (e.cancelable) e.preventDefault(); 
+            let clientX, clientY;
+            if (e.type.includes('touch')) { if (e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } else return; } else { clientX = e.clientX; clientY = e.clientY; }
+            let dx = clientX - (joyBaseRect.left + joyBaseRect.width / 2); let dy = clientY - (joyBaseRect.top + joyBaseRect.height / 2);
+            let dist = Math.hypot(dx, dy); let maxDist = joyBaseRect.width / 2;
+            joyAngle = Math.atan2(dy, dx);
+            if (dist > maxDist) { dx = Math.cos(joyAngle) * maxDist; dy = Math.sin(joyAngle) * maxDist; }
+            joyKnob.style.transform = `translate(${dx}px, ${dy}px)`; joyVector.x = dx / maxDist; joyVector.y = dy / maxDist;
+        }
+        function endJoy() { joyActive = false; joyKnob.style.transform = `translate(0px, 0px)`; joyVector = { x: 0, y: 0 }; }
+        ui.joyZone.addEventListener('mousedown', startJoy); window.addEventListener('mousemove', moveJoy); window.addEventListener('mouseup', endJoy);
+        ui.joyZone.addEventListener('touchstart', startJoy, {passive: false}); window.addEventListener('touchmove', moveJoy, {passive: false}); window.addEventListener('touchend', endJoy);
+
+        // --- OYUN ALANI VE DEĞİŞKENLER ---
+        let isPlaying = false; let isPaused = false; let animationId; let cameraShake = 0;
+        const WORLD_WIDTH = 4000; const WORLD_HEIGHT = 4000; let camera = { x: 0, y: 0 };
+        let score = 0; let level = 1; let xp = 0; let xpToNextLevel = 100; let frameCount = 0; let gameTime = 0;
+        let sessionCores = 0; let bossSpawned = { 180: false, 300: false }; 
+        let synergies = { blackholeSaw: false }; 
+
+        let player; let projectiles = []; let enemies = []; let particles = []; let gems = []; let floatingTexts = []; let orbitals = []; let scenery = []; let spells = [];
+
+        function getDistance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+        function formatTime(seconds) { const m = Math.floor(seconds / 60).toString().padStart(2, '0'); const s = (seconds % 60).toString().padStart(2, '0'); return `${m}:${s}`; }
+
+        function checkSynergies() {
+            if (!synergies.blackholeSaw && player.magnetRange >= 10000 && orbitals.length > 0 && orbitals[0].radius >= 25) {
+                synergies.blackholeSaw = true;
+                showSynergyBanner("SİNERJİ AKTİF: KARA DELİK TESTERESİ"); 
+            }
+        }
+
+        function showSynergyBanner(text) {
+            if (ui.synergyBanner) {
+                ui.synergyBanner.textContent = text; ui.synergyBanner.style.display = 'block';
+                setTimeout(() => { ui.synergyBanner.style.display = 'none'; }, 4000);
+            }
+        }
+
+        function updateHealthUI() {
+            ui.health.textContent = Math.max(0, Math.floor(player.health));
+            ui.maxHealth.textContent = player.maxHealth;
+        }
+
+        function spawnEnemy(isBoss=false, bossType=null) {
+            let x, y;
+            if (Math.random() < 0.5) { x = camera.x + (Math.random() < 0.5 ? -100 : canvas.width + 100); y = camera.y + Math.random() * canvas.height; } 
+            else { x = camera.x + Math.random() * canvas.width; y = camera.y + (Math.random() < 0.5 ? -100 : canvas.height + 100); }
+            x = Math.max(0, Math.min(WORLD_WIDTH, x)); y = Math.max(0, Math.min(WORLD_HEIGHT, y));
+            
+            if(isBoss) {
+                enemies.push(new Enemy(x, y, bossType, true));
+                ui.bossWarn.style.display = 'block';
+                ui.bossWarn.innerHTML = `DİKKAT!<br>${bossType==='ninja'?'HACKER-NİNJA':'SİBER-TANK'} TESPİT EDİLDİ`;
+                setTimeout(() => ui.bossWarn.style.display = 'none', 3000);
+            } else {
+                let type = 0; const rand = Math.random();
+                if (level > 4 && rand > 0.88) type = 2; else if (level > 2 && rand < 0.25) type = 1;
+                enemies.push(new Enemy(x, y, type));
+            }
+        }
+
+        function createParticles(x, y, color, amount, speedMultiplier = 1) {
+            for (let i = 0; i < amount; i++) { particles.push(new Particle( x, y, Math.random() * 3 + 1, color, { x: (Math.random() - 0.5) * (Math.random() * 8 * speedMultiplier), y: (Math.random() - 0.5) * (Math.random() * 8 * speedMultiplier) } )); }
+        }
+
+        function addOrbital() {
+            const offset = 80 + (orbitals.length * 5); const angle = (Math.PI * 2 / (orbitals.length + 1)) * orbitals.length;
+            orbitals.push(new Orbital(player, offset, angle)); orbitals.forEach((orb, index) => { orb.angle = (Math.PI * 2 / orbitals.length) * index; });
+        }
+
+        function generateWorld() {
+            scenery = [];
+            for(let i=0; i<400; i++) scenery.push(new Prop(Math.random()*WORLD_WIDTH, Math.random()*WORLD_HEIGHT, 'tree'));
+            for(let i=0; i<150; i++) scenery.push(new Prop(Math.random()*WORLD_WIDTH, Math.random()*WORLD_HEIGHT, 'rock'));
+        }
+
+        function drawGroundDetails() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'; ctx.lineWidth = 1; const gridSize = 100;
+            const offsetX = -(camera.x % gridSize); const offsetY = -(camera.y % gridSize);
+            for(let x = offsetX; x < canvas.width; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+            for(let y = offsetY; y < canvas.height; y += gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)'; ctx.lineWidth = 10; ctx.strokeRect(-camera.x, -camera.y, WORLD_WIDTH, WORLD_HEIGHT);
+        }
+
+        function gainXp(amount) {
+            xp += amount; score += amount * 5; ui.score.textContent = score;
+            if (xp >= xpToNextLevel) { triggerLevelUp(); } else { ui.xpBar.style.width = ((xp / xpToNextLevel) * 100) + '%'; }
+        }
+
+        // --- RPG UPGRADE VERİTABANI ---
+        const upgradeDatabase = [
+            {
+                id: 'dmg', icon: '💥', maxLevel: 3,
+                getTitle: (lvl) => `Ağır Kalibre ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? 'Hasarı artırır.' : (lvl===2 ? 'Hasarı çok artırır.' : 'Hasarı devasa yapar ve mermileri büyütür!'),
+                action: (lvl) => {
+                    if (lvl===1) player.damage += 15;
+                    else if (lvl===2) player.damage += 20;
+                    else if (lvl===3) { player.damage += 35; player.projectileSize += 6; }
+                }
+            },
+            {
+                id: 'fireRate', icon: '🔫', maxLevel: 3,
+                getTitle: (lvl) => `Seri Ateş ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? 'Atış hızını artırır.' : (lvl===2 ? 'Ateş etme süresi kısalır.' : 'Makineli Tüfek! Aşırı seri ateş.'),
+                action: (lvl) => {
+                    if (lvl===1) player.fireRate = 25;
+                    else if (lvl===2) player.fireRate = 15;
+                    else if (lvl===3) player.fireRate = 6;
+                }
+            },
+            {
+                id: 'speed', icon: '👟', maxLevel: 3,
+                getTitle: (lvl) => `Atletik Yapı ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? 'Koşu hızını artırır.' : (lvl===2 ? 'Daha da hızlı.' : 'Hız MAX. Yürürken arkanda ölümcül ateş bırakırsın!'),
+                action: (lvl) => {
+                    player.baseSpeed += 0.25;
+                    if (lvl===3) player.leaveTrail = true;
+                }
+            },
+            {
+                id: 'pierce', icon: '🏹', maxLevel: 3,
+                getTitle: (lvl) => `Delici Mermi ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? 'Mermiler 1 düşmanı delip geçer.' : (lvl===2 ? 'Mermiler 3 düşmanı deler.' : 'Mermiler asla durmaz, herkesi biçer geçer!'),
+                action: (lvl) => {
+                    if(lvl===1) player.pierce = 1;
+                    else if(lvl===2) player.pierce = 3;
+                    else if(lvl===3) player.pierce = 999;
+                }
+            },
+            {
+                id: 'magnet', icon: '🧲', maxLevel: 3,
+                getTitle: (lvl) => `XP Mıknatısı ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? 'XP çekme menzilini artırır.' : (lvl===2 ? 'Menzil devasa olur.' : 'Tüm haritadaki XP leri tek seferde çeker!'),
+                action: (lvl) => {
+                    if(lvl===1) player.magnetRange = 250;
+                    else if(lvl===2) player.magnetRange = 450;
+                    else if(lvl===3) player.magnetRange = 10000;
+                }
+            },
+            {
+                id: 'lifesteal', icon: '🧛', maxLevel: 3,
+                getTitle: (lvl) => `Vampirizm ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? '%5 can çalma şansı.' : (lvl===2 ? '%10 can çalma.' : '%25 can çalma ve +50 Maksimum Can!'),
+                action: (lvl) => {
+                    if(lvl===1) player.lifesteal = 0.05;
+                    else if(lvl===2) player.lifesteal = 0.10;
+                    else if(lvl===3) { player.lifesteal = 0.25; player.maxHealth += 50; player.heal(50); updateHealthUI(); }
+                }
+            },
+            {
+                id: 'orbital', icon: '💫', maxLevel: 3,
+                getTitle: (lvl) => `Yörünge Bıçağı ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? 'Etrafında 1 bıçak döner.' : (lvl===2 ? '2 yeni bıçak ekler.' : 'Bıçaklar testereye dönüşür, büyür ve 3 kat hasar verir!'),
+                action: (lvl) => {
+                    if (lvl===1) addOrbital();
+                    else if (lvl===2) { addOrbital(); addOrbital(); }
+                    else if (lvl===3) { addOrbital(); orbitals.forEach(o => { o.radius = 25; o.damage *= 3; o.speed = 0.08; }); }
+                }
+            },
+            {
+                id: 'spell_fire', icon: '🔥', maxLevel: 3,
+                getTitle: (lvl) => `Ateş Topu ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? 'Otomatik ateş topu fırlatır.' : (lvl===2 ? 'Çapı ve hasarı artar.' : 'Meteor Yağmuru! 3 ateş topunu aynı anda fırlatır.'),
+                action: (lvl) => { player.spellLevels.fire = lvl; if(lvl===3) player.meteorShower = true; }
+            },
+            {
+                id: 'spell_ice', icon: '❄️', maxLevel: 3,
+                getTitle: (lvl) => `Buz Halesi ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? 'Periyodik olarak etrafı dondurur.' : (lvl===2 ? 'Dondurma menzili genişler.' : 'Kırılan Buz! Donan düşmanlar 150 devasa hasar alır.'),
+                action: (lvl) => { player.spellLevels.ice = lvl; if(lvl===3) player.shatterIce = true; }
+            },
+            {
+                id: 'spell_lightning', icon: '⚡', maxLevel: 3,
+                getTitle: (lvl) => `Zincir Şimşek ${lvl===1 ? 'I' : (lvl===2 ? 'II' : 'MAX')}`,
+                getDesc: (lvl) => lvl===1 ? 'Düşmanlara seken şimşek.' : (lvl===2 ? '5 düşmana kadar seker.' : 'Kızıl Şimşek! Sınırsız seker ve tek atar.'),
+                action: (lvl) => { player.spellLevels.lightning = lvl; }
+            }
+        ];
+
+        function updateStatsUI() {
+            if (ui.rpgPanel) {
+                ui.rpgPanel.innerHTML = `
+                    <div class="rpg-stat"><span>Hasar:</span> <span class="rpg-val">${player.damage}</span></div>
+                    <div class="rpg-stat"><span>Atış Hızı:</span> <span class="rpg-val">${(60 / player.fireRate).toFixed(1)}/sn</span></div>
+                    <div class="rpg-stat"><span>Can Çalma:</span> <span class="rpg-val">%${Math.round(player.lifesteal * 100)}</span></div>
+                    <div class="rpg-stat"><span>Delici:</span> <span class="rpg-val">${player.pierce > 10 ? 'Sınırsız' : player.pierce}</span></div>
+                    <div class="rpg-stat"><span>Hız:</span> <span class="rpg-val">${player.currentSpeed.toFixed(1)}</span></div>
+                    <hr style="border-color: #00e5ff; opacity: 0.3; margin: 10px 0;">
+                    <div class="rpg-stat"><span>Ateş Büyüsü:</span> <span class="rpg-val ${player.spellLevels.fire===3?'max':''}">${player.spellLevels.fire===3?'MAX':player.spellLevels.fire}</span></div>
+                    <div class="rpg-stat"><span>Buz Büyüsü:</span> <span class="rpg-val ${player.spellLevels.ice===3?'max':''}">${player.spellLevels.ice===3?'MAX':player.spellLevels.ice}</span></div>
+                    <div class="rpg-stat"><span>Şimşek:</span> <span class="rpg-val ${player.spellLevels.lightning===3?'max':''}">${player.spellLevels.lightning===3?'MAX':player.spellLevels.lightning}</span></div>
+                `;
+            }
+        }
+
+        // --- SINIFLAR ---
+        class Prop {
+            constructor(x, y, type) { this.x = x; this.y = y; this.type = type; this.size = Math.random() * 0.5 + 0.8; }
+            draw() {
+                if (this.x < camera.x - 100 || this.x > camera.x + canvas.width + 100 || this.y < camera.y - 100 || this.y > camera.y + canvas.height + 100) return;
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                ctx.save(); ctx.translate(drawX, drawY); ctx.scale(this.size, this.size);
+
+                if (this.type === 'tree') {
+                    ctx.fillStyle = '#2d1b10'; ctx.fillRect(-5, 0, 10, 25);
+                    ctx.fillStyle = '#0f4d22'; ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(25, 10); ctx.lineTo(-25, 10); ctx.fill();
+                    ctx.fillStyle = '#155d2b'; ctx.beginPath(); ctx.moveTo(0, -45); ctx.lineTo(20, -5); ctx.lineTo(-20, -5); ctx.fill();
+                    ctx.fillStyle = '#1b7035'; ctx.beginPath(); ctx.moveTo(0, -60); ctx.lineTo(15, -20); ctx.lineTo(-15, -20); ctx.fill();
+                } else if (this.type === 'rock') {
+                    ctx.fillStyle = '#5a6268'; ctx.beginPath();
+                    ctx.moveTo(0, -20); ctx.lineTo(15, -10); ctx.lineTo(25, 5); ctx.lineTo(10, 15); ctx.lineTo(-15, 12); ctx.lineTo(-20, 0); ctx.lineTo(-10, -15); ctx.fill();
+                    ctx.fillStyle = '#343a40'; ctx.beginPath();
+                    ctx.moveTo(0, -20); ctx.lineTo(15, -10); ctx.lineTo(5, 5); ctx.lineTo(-10, -15); ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        class TrailFlame {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.radius = 20; this.damage = 15; 
+                this.timer = 40; this.done = false; this.hitEnemies = new Set();
+            }
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                if(drawX < -20 || drawX > canvas.width+20 || drawY < -20 || drawY > canvas.height+20) return;
+                ctx.beginPath(); ctx.arc(drawX, drawY, this.radius, 0, Math.PI*2);
+                ctx.fillStyle = `rgba(255, 100, 0, ${this.timer/40})`; ctx.fill();
+            }
+            update() {
+                this.timer--; if(this.timer <= 0) this.done = true;
+                enemies.forEach(e => {
+                    if(!this.hitEnemies.has(e) && getDistance(this.x, this.y, e.x, e.y) < this.radius + e.radius) {
+                        e.health -= this.damage; this.hitEnemies.add(e); floatingTexts.push(new FloatingText(e.x, e.y, this.damage, false));
+                    }
+                });
+                this.draw();
+            }
+        }
+
+        class Player {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.radius = 15; this.color = '#00e5ff'; this.angle = 0;
+                
+                this.baseSpeed = 0.8 + (metaData.upgrades.speed * 0.15); this.currentSpeed = this.baseSpeed;
+                this.maxHealth = 100 + (metaData.upgrades.health * 20); this.health = this.maxHealth;
+                this.damage = 25 + (metaData.upgrades.dmg * 5); this.lifesteal = (metaData.upgrades.lifesteal * 0.01);
+                
+                this.upgrades = {}; this.projectileSize = 4; this.pierce = 0; this.magnetRange = 130;
+                this.leaveTrail = false; this.critChance = 0.05; this.critMultiplier = 1.5;
+                this.fireRate = 40; this.projectileSpeed = 12; this.armor = 0;
+                
+                this.spellLevels = { fire: 0, ice: 0, lightning: 0 }; this.spellTimers = { fire: 0, ice: 0, lightning: 0 };
+                this.meteorShower = false; this.shatterIce = false;
+            }
+
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                ctx.save(); ctx.translate(drawX, drawY);
+                let closest = this.getClosestEnemy();
+                if (closest) this.angle = Math.atan2(closest.y - this.y, closest.x - this.x);
+                else if (joyActive) this.angle = joyAngle;
+                ctx.rotate(this.angle);
+
+                ctx.fillStyle = '#114455'; ctx.beginPath(); ctx.ellipse(0, 0, 10, 18, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#cccccc'; ctx.fillRect(8, 4, 22, 6); 
+                ctx.fillStyle = '#00e5ff'; ctx.fillRect(28, 5, 4, 4); 
+                ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill(); 
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(4, -4, 6, 8); 
+                ctx.restore();
+            }
+
+            getClosestEnemy() {
+                let closest = null; let minDistance = Infinity;
+                enemies.forEach(enemy => {
+                    const dist = getDistance(this.x, this.y, enemy.x, enemy.y);
+                    if (dist < minDistance && dist < 800) { minDistance = dist; closest = enemy; }
+                });
+                return closest;
+            }
+
+            update() {
+                let timeBonus = gameTime * 0.003;
+                this.currentSpeed = Math.min(2.5, this.baseSpeed + timeBonus);
+                
+                if (frameCount % 60 === 0) updateStatsUI();
+
+                if (joyActive) {
+                    this.x += joyVector.x * this.currentSpeed; this.y += joyVector.y * this.currentSpeed;
+                    if (this.leaveTrail && frameCount % 5 === 0) spells.push(new TrailFlame(this.x, this.y));
+                }
+
+                this.x = Math.max(this.radius, Math.min(WORLD_WIDTH - this.radius, this.x));
+                this.y = Math.max(this.radius, Math.min(WORLD_HEIGHT - this.radius, this.y));
+
+                this.castSpells(); this.draw();
+            }
+
+            castSpells() {
+                if (this.spellLevels.fire > 0) {
+                    this.spellTimers.fire++;
+                    let cd = Math.max(60, 180 - (this.spellLevels.fire * 20)); 
+                    if (this.spellTimers.fire >= cd && enemies.length > 0) {
+                        this.spellTimers.fire = 0;
+                        let count = this.meteorShower ? 3 : 1;
+                        for(let i=0; i<count; i++) {
+                            let target = enemies[Math.floor(Math.random() * enemies.length)]; 
+                            let angle = Math.atan2(target.y - this.y, target.x - this.x) + (Math.random()-0.5)*0.5;
+                            projectiles.push(new Fireball(this.x, this.y, angle, 50 + (this.spellLevels.fire * 30), this.spellLevels.fire));
+                        }
+                    }
+                }
+                if (this.spellLevels.ice > 0) {
+                    this.spellTimers.ice++;
+                    if (this.spellTimers.ice >= 240) {
+                        this.spellTimers.ice = 0;
+                        spells.push(new FrostNova(this.x, this.y, 100 + (this.spellLevels.ice * 50), this.shatterIce));
+                    }
+                }
+                if (this.spellLevels.lightning > 0) {
+                    this.spellTimers.lightning++;
+                    if (this.spellTimers.lightning >= 120 && enemies.length > 0) {
+                        this.spellTimers.lightning = 0;
+                        let closest = this.getClosestEnemy();
+                        if(closest) {
+                            let jumps = this.spellLevels.lightning === 3 ? 15 : (2 + this.spellLevels.lightning * 2);
+                            let dmg = this.spellLevels.lightning === 3 ? 300 : (30 + this.spellLevels.lightning * 15);
+                            spells.push(new LightningChain(this.x, this.y, closest, jumps, dmg, this.spellLevels.lightning === 3));
+                        }
+                    }
+                }
+            }
+
+            shoot() {
+                let closestEnemy = this.getClosestEnemy();
+                if (closestEnemy) {
+                    const gunOffsetX = this.x + Math.cos(this.angle) * 30;
+                    const gunOffsetY = this.y + Math.sin(this.angle) * 30;
+                    const shootAngle = Math.atan2(closestEnemy.y - gunOffsetY, closestEnemy.x - gunOffsetX);
+                    const velocity = { x: Math.cos(shootAngle) * this.projectileSpeed, y: Math.sin(shootAngle) * this.projectileSpeed };
+                    projectiles.push(new Projectile(gunOffsetX, gunOffsetY, shootAngle, velocity, this.damage, this.pierce));
+                    createParticles(gunOffsetX, gunOffsetY, '#00e5ff', 3, 0.5);
+                }
+            }
+
+            takeDamage(amount) {
+                this.health -= Math.max(0.5, amount - this.armor); updateHealthUI(); createParticles(this.x, this.y, '#ff0055', 5, 2);
+                if (this.health <= 0) { this.health = 0; endGame(); }
+            }
+            heal(amount) { this.health = Math.min(this.maxHealth, this.health + amount); updateHealthUI(); createParticles(this.x, this.y, '#00ff00', 10, 3); }
+        }
+
+        class Enemy {
+            constructor(x, y, type) {
+                this.x = x; this.y = y; this.type = type; this.angle = 0; this.markedForDeletion = false;
+                
+                if (type === 1) { 
+                    this.radius = 14; this.color = '#ffcc00'; this.maxHealth = 25 + (level * 5);
+                    this.baseSpeed = Math.random() * 0.4 + 0.6; this.xpValue = 15; this.damageToPlayer = 0.5;
+                } else if (type === 2) { 
+                    this.radius = 32; this.color = '#aa00ff'; this.maxHealth = 180 + (level * 30);
+                    this.baseSpeed = Math.random() * 0.2 + 0.2; this.xpValue = 50; this.damageToPlayer = 2.0;
+                } else { 
+                    this.radius = 16; this.color = '#ff0055'; this.maxHealth = 45 + (level * 10);
+                    this.baseSpeed = Math.random() * 0.3 + 0.4; this.xpValue = 10; this.damageToPlayer = 0.8;
+                }
+                
+                this.speed = this.baseSpeed; this.health = this.maxHealth; this.freezeTimer = 0;
+            }
+
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                if(drawX < -50 || drawX > canvas.width + 50 || drawY < -50 || drawY > canvas.height + 50) return;
+
+                ctx.save(); ctx.translate(drawX, drawY);
+                this.angle = Math.atan2(player.y - this.y, player.x - this.x); ctx.rotate(this.angle);
+                if(this.freezeTimer > 0) ctx.globalAlpha = 0.7;
+
+                if (this.type === 1) { 
+                    ctx.fillStyle = this.freezeTimer > 0 ? '#00ffff' : this.color;
+                    ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-10, 12); ctx.lineTo(-5, 0); ctx.lineTo(-10, -12); ctx.closePath(); ctx.fill();
+                    ctx.strokeStyle = this.freezeTimer > 0 ? '#00ffff' : this.color; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-15, 18); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-15, -18); ctx.stroke();
+                } else if (this.type === 2) { 
+                    ctx.fillStyle = '#331144'; ctx.fillRect(-15, -22, 30, 44); ctx.fillStyle = this.freezeTimer > 0 ? '#00ffff' : this.color;
+                    ctx.fillRect(5, -26, 20, 14); ctx.fillRect(5, 12, 20, 14); ctx.fillStyle = '#ff55ff'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.fill();
+                } else { 
+                    ctx.fillStyle = '#880022'; ctx.fillRect(5, -14, 16, 6); ctx.fillRect(5, 8, 16, 6); ctx.fillStyle = this.freezeTimer > 0 ? '#00ffff' : this.color;
+                    ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.restore();
+
+                if (this.health < this.maxHealth && this.health > 0) {
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.5)'; ctx.fillRect(drawX - this.radius, drawY - this.radius - 12, this.radius * 2, 4);
+                    ctx.fillStyle = '#00ff00'; ctx.fillRect(drawX - this.radius, drawY - this.radius - 12, (this.radius * 2) * (this.health / this.maxHealth), 4);
+                }
+            }
+
+            update() {
+                if(this.freezeTimer > 0) { this.speed = this.baseSpeed * 0.4; this.freezeTimer--; } 
+                else { this.speed = this.baseSpeed; }
+                
+                if (synergies && synergies.blackholeSaw && getDistance(this.x, this.y, player.x, player.y) < 400) {
+                    const pullAngle = Math.atan2(player.y - this.y, player.x - this.x);
+                    this.x += Math.cos(pullAngle) * 2; this.y += Math.sin(pullAngle) * 2;
+                }
+
+                const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(angle) * this.speed; this.y += Math.sin(angle) * this.speed; this.draw();
+            }
+        }
+
+        class Fireball {
+            constructor(x, y, angle, damage, level) {
+                this.x = x; this.y = y; this.angle = angle; this.damage = damage; this.speed = 9;
+                this.radius = 15 + (level * 2); this.explosionRadius = 100 + (level * 20);
+                this.velocity = { x: Math.cos(angle) * this.speed, y: Math.sin(angle) * this.speed }; 
+                this.markedForDeletion = false; this.hitEnemies = new Set();
+            }
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                ctx.beginPath(); ctx.arc(drawX, drawY, this.radius, 0, Math.PI*2);
+                ctx.fillStyle = '#ff4500'; ctx.shadowColor = '#ff4500'; ctx.shadowBlur = 20; ctx.fill(); ctx.shadowBlur = 0;
+            }
+            update() { this.x += this.velocity.x; this.y += this.velocity.y; this.draw(); }
+            explode() {
+                for(let i=0; i<30; i++) createParticles(this.x, this.y, '#ff4500', 1, 3);
+                enemies.forEach(e => {
+                    if(getDistance(this.x, this.y, e.x, e.y) < this.explosionRadius) {
+                        e.health -= this.damage; floatingTexts.push(new FloatingText(e.x, e.y, this.damage, true)); 
+                    }
+                });
+            }
+        }
+
+        class FrostNova {
+            constructor(x, y, maxRadius, shatter) {
+                this.x = x; this.y = y; this.currentRadius = 10; this.maxRadius = maxRadius; this.alpha = 0.8; this.done = false;
+                enemies.forEach(e => { 
+                    if(getDistance(this.x, this.y, e.x, e.y) < this.maxRadius) { 
+                        e.freezeTimer = 180; 
+                        if (shatter) { e.health -= 150; floatingTexts.push(new FloatingText(e.x, e.y, 150, true)); }
+                    } 
+                });
+            }
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                ctx.beginPath(); ctx.arc(drawX, drawY, this.currentRadius, 0, Math.PI*2);
+                ctx.strokeStyle = `rgba(0, 255, 255, ${this.alpha})`; ctx.lineWidth = 10;
+                ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 15; ctx.stroke(); ctx.shadowBlur = 0;
+            }
+            update() { this.currentRadius += 10; this.alpha -= 0.05; if(this.alpha <= 0) this.done = true; this.draw(); }
+        }
+
+        class LightningChain {
+            constructor(startX, startY, firstTarget, jumps, damage, isRed) {
+                this.points = [{x: startX, y: startY}]; this.damage = damage; this.alpha = 1.0; this.done = false; this.isRed = isRed;
+                let current = firstTarget; let hitEnemies = new Set();
+                for(let i=0; i<jumps; i++) {
+                    if(!current) break;
+                    this.points.push({x: current.x, y: current.y}); current.health -= this.damage;
+                    floatingTexts.push(new FloatingText(current.x, current.y, this.damage, isRed)); hitEnemies.add(current);
+                    let next = null; let minD = Infinity;
+                    enemies.forEach(e => { if(!hitEnemies.has(e)) { let d = getDistance(current.x, current.y, e.x, e.y); if(d < 300 && d < minD) { minD = d; next = e; } } });
+                    current = next;
+                }
+            }
+            draw() {
+                if(this.points.length < 2) return; ctx.beginPath(); ctx.moveTo(this.points[0].x - camera.x, this.points[0].y - camera.y);
+                for(let i=1; i<this.points.length; i++) { ctx.lineTo(this.points[i].x - camera.x, this.points[i].y - camera.y); }
+                ctx.strokeStyle = this.isRed ? `rgba(255, 0, 50, ${this.alpha})` : `rgba(200, 200, 255, ${this.alpha})`; ctx.lineWidth = this.isRed ? 8 : 4;
+                ctx.shadowColor = this.isRed ? '#ff0000' : '#ffffff'; ctx.shadowBlur = 20; ctx.stroke(); ctx.shadowBlur = 0;
+            }
+            update() { this.alpha -= 0.1; if(this.alpha <= 0) this.done = true; this.draw(); }
+        }
+
+        class Projectile {
+            constructor(x, y, angle, velocity, baseDamage, pierceCount) {
+                this.x = x; this.y = y; this.angle = angle; this.velocity = velocity; 
+                this.radius = player.projectileSize; this.pierceCount = pierceCount;
+                this.isCrit = Math.random() < player.critChance;
+                let dmgVariance = baseDamage * (0.8 + Math.random() * 0.4);
+                this.finalDamage = Math.floor(this.isCrit ? dmgVariance * player.critMultiplier : dmgVariance);
+                this.markedForDeletion = false; this.hitEnemies = new Set();
+            }
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                if(drawX < -20 || drawX > canvas.width + 20 || drawY < -20 || drawY > canvas.height + 20) return;
+                ctx.save(); ctx.translate(drawX, drawY); ctx.rotate(this.angle);
+                ctx.fillStyle = this.isCrit ? '#ffcc00' : '#ffffff'; ctx.shadowColor = this.isCrit ? '#ff5500' : '#00e5ff'; ctx.shadowBlur = 8;
+                ctx.fillRect(0, -this.radius/2, 15 + this.radius, this.radius); ctx.restore();
+            }
+            update() { this.x += this.velocity.x; this.y += this.velocity.y; this.draw(); }
+        }
+
+        class Orbital {
+            constructor(player, radiusOffset, angleOffset) {
+                this.player = player; this.radiusOffset = radiusOffset; this.angle = angleOffset;
+                this.speed = 0.04; this.radius = 12; this.color = '#bf00ff'; this.damage = 18; this.x = 0; this.y = 0;
+            }
+            update() { this.angle += this.speed; this.x = this.player.x + Math.cos(this.angle) * this.radiusOffset; this.y = this.player.y + Math.sin(this.angle) * this.radiusOffset; this.draw(); }
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                ctx.save(); ctx.translate(drawX, drawY); ctx.rotate(frameCount * 0.3);
+                ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10;
+                
+                ctx.beginPath();
+                for(let i=0; i<8; i++){
+                    ctx.lineTo(Math.cos(i*Math.PI/4)*this.radius, Math.sin(i*Math.PI/4)*this.radius);
+                    ctx.lineTo(Math.cos((i+0.5)*Math.PI/4)*(this.radius*0.6), Math.sin((i+0.5)*Math.PI/4)*(this.radius*0.6));
+                }
+                ctx.closePath(); ctx.fill(); ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, radius, color, velocity) {
+                this.x = x; this.y = y; this.radius = radius; this.color = color; this.velocity = velocity; this.alpha = 1;
+            }
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                ctx.save(); ctx.globalAlpha = this.alpha; ctx.beginPath(); ctx.arc(drawX, drawY, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill(); ctx.restore();
+            }
+            update() { this.velocity.x *= 0.95; this.velocity.y *= 0.95; this.x += this.velocity.x; this.y += this.velocity.y; this.alpha -= 0.03; this.draw(); }
+        }
+
+        class FloatingText {
+            constructor(x, y, text, isCrit) {
+                this.x = x; this.y = y; this.text = text; this.isCrit = isCrit;
+                this.size = isCrit ? 26 : 16; this.color = isCrit ? '#ffaa00' : '#ffffff'; this.alpha = 1;
+                this.velocity = { x: (Math.random() - 0.5) * 2, y: isCrit ? -3 : -1.5 };
+            }
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                ctx.save(); ctx.globalAlpha = this.alpha; ctx.font = `bold ${this.size}px Arial`;
+                ctx.fillStyle = this.color; ctx.shadowColor = 'black'; ctx.shadowBlur = 4;
+                ctx.fillText(this.text + (this.isCrit ? '!' : ''), drawX, drawY); ctx.restore();
+            }
+            update() { this.x += this.velocity.x; this.y += this.velocity.y; this.alpha -= 0.02; this.draw(); }
+        }
+
+        class Gem {
+            constructor(x, y, xpValue, color = '#00e5ff') {
+                this.x = x; this.y = y; this.radius = xpValue > 20 ? 7 : 5; this.color = color; this.xpValue = xpValue; this.markedForDeletion = false;
+            }
+            draw() {
+                const drawX = this.x - camera.x; const drawY = this.y - camera.y;
+                if(drawX < -20 || drawX > canvas.width + 20 || drawY < -20 || drawY > canvas.height + 20) return;
+                ctx.save(); ctx.translate(drawX, drawY); ctx.rotate(frameCount * 0.05);
+                ctx.beginPath(); ctx.moveTo(0, -this.radius * 1.5); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius * 1.5); ctx.lineTo(-this.radius, 0); ctx.closePath();
+                ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.fill(); ctx.restore();
+            }
+            update() {
+                const dist = getDistance(this.x, this.y, player.x, player.y);
+                if (dist < player.magnetRange) { const angle = Math.atan2(player.y - this.y, player.x - this.x); this.x += Math.cos(angle) * 12; this.y += Math.sin(angle) * 12; }
+                this.draw();
+            }
+        }
+
+        function showLevelUpMenu() {
+            ui.upgradeOptions.innerHTML = '';
+            
+            let pool = [];
+            upgradeDatabase.forEach(upg => {
+                let curLvl = player.upgrades[upg.id] || 0;
+                if (curLvl < upg.maxLevel) {
+                    let weight = curLvl === 0 ? 10 : (curLvl === 1 ? 4 : 2); 
+                    for(let i=0; i<weight; i++) pool.push(upg);
+                }
+            });
+
+            let selected = [];
+            let uniqueAvailable = [...new Set(pool.map(i => i.id))].length;
+            let optionsCount = Math.min(3, uniqueAvailable);
+
+            if(optionsCount === 0) {
+                resumeGame(); player.heal(50);
+                floatingTexts.push(new FloatingText(player.x, player.y - 40, "TAMİR EDİLDİ", true));
+                return;
+            }
+
+            while(selected.length < optionsCount) {
+                let idx = Math.floor(Math.random() * pool.length);
+                let choice = pool[idx];
+                if (!selected.includes(choice)) {
+                    selected.push(choice);
+                    pool = pool.filter(u => u.id !== choice.id); 
+                }
+            }
+
+            selected.forEach(upgrade => {
+                let nextLvl = (player.upgrades[upgrade.id] || 0) + 1;
+                const card = document.createElement('div'); 
+                card.className = `upgrade-card ${nextLvl === upgrade.maxLevel ? 'max-tier' : ''}`;
+                card.innerHTML = `<div class="upgrade-icon">${upgrade.icon}</div><div><div class="upgrade-title">${upgrade.getTitle(nextLvl)}</div><div class="upgrade-desc">${upgrade.getDesc(nextLvl)}</div></div>`;
+                card.onclick = () => {
+                    player.upgrades[upgrade.id] = nextLvl;
+                    upgrade.action(nextLvl); 
+                    updateStatsUI(); 
+                    floatingTexts.push(new FloatingText(player.x, player.y - 40, upgrade.getTitle(nextLvl), nextLvl === upgrade.maxLevel));
+                    checkSynergies(); 
+                    resumeGame();
+                };
+                ui.upgradeOptions.appendChild(card);
+            });
+            screens.levelUp.style.display = 'flex';
+        }
+
+        function triggerLevelUp() {
+            isPaused = true; joyActive = false; joyKnob.style.transform = `translate(0px, 0px)`; joyVector = { x: 0, y: 0 };
+            level++; xp -= xpToNextLevel; xpToNextLevel = Math.floor(xpToNextLevel * 1.5);
+            ui.level.textContent = level; ui.xpBar.style.width = '0%';
+            createParticles(player.x, player.y, '#00e5ff', 80, 2);
+            showLevelUpMenu();
+        }
+
+        function toggleRPGPanel() {
+            let isPanelHidden = ui.rpgPanel.classList.contains('rpg-panel-hidden');
+            if(isPanelHidden) { ui.rpgPanel.classList.remove('rpg-panel-hidden'); document.getElementById('toggleStatsBtn').innerHTML = '👁️ İstatistikleri Gizle'; } 
+            else { ui.rpgPanel.classList.add('rpg-panel-hidden'); document.getElementById('toggleStatsBtn').innerHTML = '👁️ İstatistikleri Göster'; }
+        }
+
+        function togglePause() {
+            if (!isPlaying || screens.levelUp.style.display === 'flex') return;
+            isPaused = !isPaused;
+            if (isPaused) {
+                screens.pause.style.display = 'flex'; ui.pauseTimeVal.textContent = formatTime(gameTime);
+                document.getElementById('aiTacticText').textContent = ""; 
+                joyActive = false; joyKnob.style.transform = `translate(0px, 0px)`; joyVector = { x: 0, y: 0 };
+            } else { screens.pause.style.display = 'none'; }
+        }
+
+        window.addEventListener('keydown', (e) => { if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') togglePause(); });
+        function resumeGame() { screens.levelUp.style.display = 'none'; isPaused = false; }
+
+        function animate() {
+            if (!isPlaying) return;
+            animationId = requestAnimationFrame(animate);
+            if (isPaused) return; 
+
+            let shakeX = 0; let shakeY = 0;
+            if(cameraShake > 0) { shakeX = (Math.random()-0.5)*cameraShake; shakeY = (Math.random()-0.5)*cameraShake; cameraShake *= 0.9; if(cameraShake<0.5) cameraShake=0; }
+
+            camera.x = player.x - canvas.width / 2 + shakeX; camera.y = player.y - canvas.height / 2 + shakeY;
+            ctx.fillStyle = '#05070a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawGroundDetails(); scenery.forEach(prop => prop.draw());
+
+            frameCount++;
+            if (frameCount % 60 === 0) { 
+                gameTime++; ui.timer.textContent = formatTime(gameTime); score += 10; ui.score.textContent = score; 
+            }
+
+            let spawnRate = Math.max(10, 80 - Math.floor(gameTime));
+            if (frameCount % player.fireRate === 0) player.shoot();
+            if (frameCount % spawnRate === 0) spawnEnemy();
+
+            orbitals.forEach(orb => orb.update());
+            
+            gems.forEach((gem) => { 
+                gem.update(); 
+                if (getDistance(player.x, player.y, gem.x, gem.y) - player.radius - gem.radius < 1) { 
+                    gem.markedForDeletion = true; gainXp(gem.xpValue); 
+                } 
+            });
+            
+            spells.forEach((spell) => { spell.update(); });
+            particles.forEach((particle) => { particle.update(); });
+            floatingTexts.forEach((ft) => { ft.update(); });
+
+            projectiles.forEach((projectile) => {
+                if (!projectile.markedForDeletion) {
+                    projectile.update();
+                    if(projectile instanceof Fireball) { 
+                        if(projectile.x < 0 || projectile.x > WORLD_WIDTH || projectile.y < 0 || projectile.y > WORLD_HEIGHT) { 
+                            projectile.explode(); projectile.markedForDeletion = true; 
+                        } 
+                    } else { 
+                        if(getDistance(player.x, player.y, projectile.x, projectile.y) > 1500) { projectile.markedForDeletion = true; } 
+                    }
+                }
+            });
+
+            enemies.forEach((enemy) => {
+                enemy.update();
+                
+                if (getDistance(player.x, player.y, enemy.x, enemy.y) - player.radius - enemy.radius < 1) { player.takeDamage(enemy.damageToPlayer); }
+                
+                orbitals.forEach(orb => { 
+                    if (getDistance(orb.x, orb.y, enemy.x, enemy.y) - orb.radius - enemy.radius < 1) { 
+                        enemy.health -= orb.damage * 0.15; createParticles(enemy.x, enemy.y, orb.color, 1); 
+                    } 
+                });
+                
+                projectiles.forEach((projectile) => {
+                    if (!projectile.markedForDeletion) {
+                        if (getDistance(projectile.x, projectile.y, enemy.x, enemy.y) - enemy.radius - projectile.radius < 1) {
+                            
+                            if (projectile instanceof Fireball) { 
+                                projectile.explode(); 
+                                projectile.markedForDeletion = true; 
+                            } else if (projectile.hitEnemies && !projectile.hitEnemies.has(enemy)) {
+                                projectile.hitEnemies.add(enemy);
+                                createParticles(projectile.x, projectile.y, '#fff', 5);
+                                let dmg = projectile.finalDamage; enemy.health -= dmg;
+                                floatingTexts.push(new FloatingText(enemy.x, enemy.y, dmg, projectile.isCrit));
+                                
+                                if (player.lifesteal > 0 && Math.random() < player.lifesteal) player.heal(1);
+                                
+                                if (projectile.pierceCount > 0) { projectile.pierceCount--; } 
+                                else { projectile.markedForDeletion = true; }
+                            }
+                        }
+                    }
+                });
+
+                if (enemy.health <= 0) {
+                    createParticles(enemy.x, enemy.y, enemy.color, enemy.radius);
+                    let gemColor = enemy.type === 2 ? '#aa00ff' : (enemy.type === 1 ? '#ffcc00' : '#00e5ff');
+                    gems.push(new Gem(enemy.x, enemy.y, enemy.xpValue, gemColor)); 
+                    enemy.markedForDeletion = true;
+                }
+            });
+
+            projectiles = projectiles.filter(p => !p.markedForDeletion);
+            enemies = enemies.filter(e => !e.markedForDeletion);
+            gems = gems.filter(g => !g.markedForDeletion);
+            spells = spells.filter(s => !s.done);
+            particles = particles.filter(p => p.alpha > 0);
+            floatingTexts = floatingTexts.filter(ft => ft.alpha > 0);
+
+            player.update();
+        }
+
+        function startGame() {
+            screens.hub.style.display = 'none'; screens.gameOver.style.display = 'none'; screens.levelUp.style.display = 'none'; screens.pause.style.display = 'none';
+            document.getElementById('epicTaleArea').textContent = "";
+            document.getElementById('epicBtn').style.display = 'block'; document.getElementById('epicBtn').disabled = false;
+            document.getElementById('epicBtn').textContent = "Destanımı Yaz ✨";
+
+            score = 0; level = 1; xp = 0; xpToNextLevel = 100; frameCount = 0; gameTime = 0; isPaused = false;
+            sessionCores = 0; bossSpawned = { 180: false, 300: false };
+            synergies = { blackholeSaw: false };
+            joyActive = false; joyKnob.style.transform = `translate(0px, 0px)`; joyVector = { x: 0, y: 0 };
+            
+            ui.score.textContent = score; ui.level.textContent = level; ui.xpBar.style.width = '0%'; ui.timer.textContent = "00:00"; ui.cores.textContent = sessionCores;
+            ui.joyZone.style.display = 'block'; ui.pauseBtn.style.display = 'flex'; ui.rpgPanelCont.style.display = 'block';
+            
+            projectiles = []; enemies = []; particles = []; gems = []; floatingTexts = []; orbitals = []; spells = [];
+            generateWorld(); 
+
+            player = new Player(WORLD_WIDTH / 2, WORLD_HEIGHT / 2); 
+            updateHealthUI(); updateStatsUI();
+            isPlaying = true; animate();
+        }
+
+        function endGame() {
+            isPlaying = false; cancelAnimationFrame(animationId);
+            if(gameTime > metaData.bestTime) metaData.bestTime = gameTime;
+            metaData.cores += sessionCores; saveMeta();
+
+            document.getElementById('finalTime').textContent = formatTime(gameTime);
+            document.getElementById('finalLevel').textContent = level;
+            document.getElementById('finalCores').textContent = sessionCores;
+            
+            screens.gameOver.style.display = 'flex';
+            ui.joyZone.style.display = 'none'; ui.pauseBtn.style.display = 'none'; ui.rpgPanelCont.style.display = 'none';
+        }
+
+        goToHub();
+
+    </script>
+</body>
+</html>
