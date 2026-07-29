@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Issız Ada 3B — Hayatta Kal</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏝️</text></svg>">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.module.js", "three/": "/vendor/" } }
+</script>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+<div id="dmgFlash"></div>
+<div id="waterOverlay"></div>
+
+<!-- ============ HUD ============ -->
+<div id="hud" class="hidden">
+    <div id="crosshair"></div>
+
+    <div id="vitals">
+        <div class="vbar"><span class="vic">❤️</span><div class="track"><div class="fill" id="hpFill"></div></div></div>
+        <div class="vbar"><span class="vic">🍗</span><div class="track"><div class="fill" id="foodFill"></div></div></div>
+        <div class="vbar"><span class="vic">💧</span><div class="track"><div class="fill" id="waterFill"></div></div></div>
+        <div class="vbar"><span class="vic">⚡</span><div class="track"><div class="fill" id="staFill"></div></div></div>
+    </div>
+
+    <div id="topRight">
+        <div id="clock"><span id="dayTxt">1. Gün</span> · <span id="timeTxt">08:00</span></div>
+        <div id="weatherTxt">☀️ Açık</div>
+        <canvas id="minimap" width="150" height="150"></canvas>
+        <div id="playerList"></div>
+    </div>
+
+    <div id="alerts"></div>
+    <div id="lootFeed"></div>
+
+    <div id="centerMsg"></div>
+    <div id="progWrap"><div id="progBar"></div></div>
+    <div id="lookAt"></div>
+
+    <div id="hotbar"></div>
+    <div id="quickBag"></div>
+
+    <div id="chatBox">
+        <div id="chatLog"></div>
+        <input id="chatInput" type="text" maxlength="160" placeholder="Mesaj yaz… (Enter gönder, Esc iptal)">
+    </div>
+
+    <div id="hint">
+        <b>WASD</b> yürü · <b>Shift</b> koş · <b>Boşluk</b> zıpla · <b>Sol tık</b> vur/topla ·
+        <b>E</b> kullan · <b>C</b> üretim · <b>Tab</b> çanta · <b>1-6</b> alet · <b>T</b> sohbet · <b>F</b> ışık
+    </div>
+</div>
+
+<!-- ============ Panolar ============ -->
+<div id="craftPanel" class="panel hidden">
+    <h2>Üretim <span class="benchNote" id="benchNote"></span><span class="x" data-close="craftPanel">×</span></h2>
+    <div class="recipeGrid" id="recipeGrid"></div>
+</div>
+
+<div id="bagPanel" class="panel hidden">
+    <h2>Çanta<span class="x" data-close="bagPanel">×</span></h2>
+    <div class="bagGrid" id="bagGrid"></div>
+    <h3>Aletler</h3>
+    <div class="bagGrid" id="toolGrid"></div>
+</div>
+
+<div id="chestPanel" class="panel hidden">
+    <h2>Ortak Sandık<span class="x" data-close="chestPanel">×</span></h2>
+    <div class="chestCols">
+        <div><h3>Sandık</h3><div class="bagGrid" id="chestGrid"></div></div>
+        <div><h3>Sende</h3><div class="bagGrid" id="chestMine"></div></div>
+    </div>
+    <p class="tip">Tıkla: 1 tane aktar · Shift+tıkla: hepsini aktar</p>
+</div>
+
+<!-- ============ Ekranlar ============ -->
+<div id="loginScreen" class="screen">
+    <h1>Issız Ada</h1>
+    <p class="sub">Arkadaşlarınla aynı adada hayatta kal, kaynakları topla, üret ve
+       birlikte bir sal yapıp kaçın.</p>
+    <div class="loginRow">
+        <input id="nameInput" type="text" maxlength="14" placeholder="Adın">
+        <button class="btn" id="joinBtn">Adaya Çık</button>
+    </div>
+    <div class="helpGrid">
+        <div><b>WASD</b> yürü, <b>Shift</b> koş, <b>Boşluk</b> zıpla</div>
+        <div><b>Sol tık</b> topla / saldır · <b>E</b> kullan</div>
+        <div><b>C</b> üretim · <b>Tab</b> çanta · <b>T</b> sohbet</div>
+        <div><b>1-6</b> alet seç · <b>F</b> meşaleyi yak</div>
+    </div>
+    <p class="conn" id="connState">Sunucuya bağlanılıyor…</p>
+</div>
+
+<div id="deadScreen" class="screen hidden">
+    <h1 class="red">Öldün</h1>
+    <p class="sub" id="deadReason"></p>
+    <p class="sub small">Eşyalarının yarısını kaybettin. Barınağın varsa orada uyanırsın.</p>
+    <button class="btn" id="respawnBtn">Yeniden Doğ</button>
+</div>
+
+<div id="winScreen" class="screen hidden">
+    <h1>Kurtuldunuz!</h1>
+    <p class="sub" id="winText"></p>
+    <button class="btn" id="winBtn">Devam Et</button>
+</div>
+
+<div id="pauseScreen" class="screen hidden">
+    <h1>Duraklatıldı</h1>
+    <div class="settings">
+        <label><input type="checkbox" id="setShadows" checked> Gölgeler</label>
+        <label><input type="checkbox" id="setFog" checked> Sis</label>
+        <label><input type="checkbox" id="setSound" checked> Ses</label>
+        <label>Görüş mesafesi <input type="range" id="setView" min="120" max="500" step="20" value="320"></label>
+        <label>Fare hassasiyeti <input type="range" id="setSens" min="20" max="300" step="10" value="100"></label>
+    </div>
+    <button class="btn" id="resumeBtn">Devam Et</button>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
