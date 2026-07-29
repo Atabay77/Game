@@ -267,7 +267,10 @@ net.on('chat', m => { ui.chatLine(m.from, m.text, m.color); sfx.chat(); });
 net.on('loot', m => {
     ui.loot(m.got);
     sfx.pick();
-    if (fx) fx.burst(m.x, m.y + 1.2, m.z, '#ffd98a', 8, 3);
+    if (fx && controls) {
+        const dx = m.x - controls.pos.x, dz = m.z - controls.pos.z;
+        if (dx * dx + dz * dz > 1.5) fx.burst(m.x, m.y + 1.2, m.z, '#ffd98a', 8, 3);
+    }
 });
 
 net.on('swing', m => {
@@ -282,7 +285,13 @@ net.on('hurt', m => {
     ui.center(m.from === 'shark' ? '🦈 Köpekbalığı!' : '🐗 Saldırı altındasın!', 1200);
 });
 
-net.on('fx', m => { if (fx) fx.burst(m.x, m.y, m.z, m.kind === 'death' ? '#c8433a' : '#ffdca8', 12, 4); });
+net.on('fx', m => {
+    if (!fx || !controls) return;
+    // Kendi üstümüzde patlayan parçacıklar kamerayı kaplıyor — onları atla
+    const dx = m.x - controls.pos.x, dz = m.z - controls.pos.z;
+    if (dx * dx + dz * dz < 4) return;
+    fx.burst(m.x, m.y, m.z, m.kind === 'death' ? '#c8433a' : '#ffdca8', 12, 4);
+});
 
 net.on('dead', m => {
     state.me.alive = false;
