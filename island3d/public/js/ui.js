@@ -56,6 +56,12 @@ export const ui = {
                 cb.chatClosed();
             }
         });
+        // Telefonda Esc yok — başka yere dokununca sohbet kapansın
+        ci.addEventListener('blur', () => {
+            if (!ci.classList.contains('on')) return;
+            ci.classList.remove('on');
+            cb.chatClosed();
+        });
 
         this.mm = $('minimap').getContext('2d');
     },

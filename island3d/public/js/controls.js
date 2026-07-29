@@ -35,12 +35,23 @@ export class Controls {
         this.blockers = [];      // {x,z,r} — ağaç, kaya, yapı
 
         this.keys = Object.create(null);
+
+        // Dokunmatik
+        this.touchMode = false;
+        this.tx = 0; this.tz = 0;        // sanal çubuk ekseni (-1..1)
+        this.tSprint = false;
+        this.tJump = false;
+        this.lookId = null;
+        this.lookX = 0; this.lookY = 0;
+
         this.bind();
+        this.bindTouch();
     }
 
     bind() {
         const c = this.canvas;
         c.addEventListener('click', () => {
+            if (this.touchMode) return;
             if (this.enabled && !this.locked) c.requestPointerLock();
         });
         document.addEventListener('pointerlockchange', () => {
@@ -60,6 +71,38 @@ export class Controls {
         window.addEventListener('keyup', e => { this.keys[e.code] = false; });
         window.addEventListener('blur', () => { this.keys = Object.create(null); });
     }
+
+    /** Parmakla sürükleyerek etrafa bakma (tuvalin boş kalan kısmı). */
+    bindTouch() {
+        const c = this.canvas;
+        c.addEventListener('pointerdown', e => {
+            if (!this.touchMode || e.pointerType === 'mouse') return;
+            if (this.lookId !== null) return;
+            this.lookId = e.pointerId;
+            this.lookX = e.clientX; this.lookY = e.clientY;
+        });
+        c.addEventListener('pointermove', e => {
+            if (e.pointerId !== this.lookId) return;
+            const s = 0.0055 * this.sensitivity;
+            this.yaw -= (e.clientX - this.lookX) * s;
+            this.pitch = Math.max(-1.5, Math.min(1.5, this.pitch - (e.clientY - this.lookY) * s));
+            this.lookX = e.clientX; this.lookY = e.clientY;
+        });
+        const end = e => { if (e.pointerId === this.lookId) this.lookId = null; };
+        c.addEventListener('pointerup', end);
+        c.addEventListener('pointercancel', end);
+        c.addEventListener('pointerleave', end);
+    }
+
+    setTouchMode(on) {
+        this.touchMode = on;
+        if (on) this.sensitivity = 1;
+    }
+
+    /** Sanal çubuktan gelen yön (-1..1). */
+    setStick(x, z) { this.tx = x; this.tz = z; }
+    requestJump() { this.tJump = true; }
+    setSprint(on) { this.tSprint = on; }
 
     ground(x, z) { return heightAt(x, z, this.seed); }
 
@@ -86,11 +129,14 @@ export class Controls {
             if (k['KeyA'] || k['ArrowLeft']) side -= 1;
             if (k['KeyD'] || k['ArrowRight']) side += 1;
         }
-        const len = Math.hypot(fwd, side);
-        if (len > 0) { fwd /= len; side /= len; }
-        this.moving = len > 0;
+        if (this.touchMode && this.enabled) { fwd += -this.tz; side += this.tx; }
 
-        const wantSprint = (k['ShiftLeft'] || k['ShiftRight']) && this.moving && this.stamina > 2;
+        const len = Math.hypot(fwd, side);
+        if (len > 1) { fwd /= len; side /= len; }
+        this.moving = len > 0.08;
+
+        const wantSprint = ((k['ShiftLeft'] || k['ShiftRight']) || this.tSprint)
+            && this.moving && this.stamina > 2;
         this.sprinting = wantSprint;
 
         const groundY = this.ground(this.pos.x, this.pos.z);
@@ -110,19 +156,21 @@ export class Controls {
         this.vel.z = dz;
 
         // Dikey hareket
+        const wantUp = (k['Space'] && (this.locked || this.touchMode)) || this.tJump;
         if (this.swimming) {
             let up = -1.5;
-            if (k['Space']) up = 3.4;
-            if (k['ControlLeft'] || k['KeyC']) up = -3.4;
+            if (wantUp) up = 3.4;
+            if (k['ControlLeft']) up = -3.4;
             this.vel.y = up;
             if (this.pos.y > 0.55 && this.vel.y > 0) this.vel.y = 0.4;
         } else {
             this.vel.y -= GRAVITY * dt;
-            if (this.onGround && k['Space'] && this.enabled && this.locked) {
+            if (this.onGround && wantUp && this.enabled) {
                 this.vel.y = JUMP;
                 this.onGround = false;
             }
         }
+        this.tJump = false;
 
         // Konum
         let nx = this.pos.x + this.vel.x * dt;

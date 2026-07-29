@@ -41,6 +41,26 @@ Terminalde şuna benzer bir çıktı göreceksin:
 > Bağlanamazlarsa bilgisayarının güvenlik duvarı 3000 portunu engelliyordur;
 > Node.js'e ağ izni ver ya da `PORT=8080 npm start` ile başka bir port dene.
 
+### Telefondan oynamak
+
+Telefon aynı Wi-Fi'a bağlıysa tarayıcıya yukarıdaki `http://192.168...` adresini
+yazması yeterli — uygulama indirmeye gerek yok. Oyun dokunmatik olduğunu kendi
+anlar ve ekran kontrollerini açar:
+
+| Kontrol | İş |
+|---|---|
+| Sol alttaki yuvarlak | yürü (ne kadar iterisen o kadar hızlı) |
+| Ekranın boş yerine parmakla sürükle | etrafa bak |
+| Sağ alttaki büyük düğme | topla / saldır / balık tut (bastığın şeye göre değişir) |
+| **KULLAN** | ateş, sandık, tezgâh, barınak, sal |
+| **ZIPLA** · **KOŞ** | zıpla · koşmayı aç-kapat |
+| Sol üstteki sıra | 🔨 üretim · 🎒 çanta · 💬 sohbet · 🔦 meşale · ⛶ tam ekran · ⚙ ayarlar |
+
+Yapı kurarken büyük düğme **KUR**, yanındakiler **DÖNDÜR** ve **İPTAL** olur.
+Telefonu yan çevirmen önerilir; dikeyken uyarı çıkar ama yine de oynanır.
+Performans için telefonda gölgeler kapalı ve görüş mesafesi kısa başlar —
+⚙ ayarlardan değiştirebilirsin.
+
 Sunucuyu kapatmak için terminalde `Ctrl+C`. Dünya `world.save.json` dosyasına
 otomatik kaydedilir; tekrar başlattığında kaldığınız yerden devam edersiniz.
 Sıfırdan başlamak için o dosyayı sil.

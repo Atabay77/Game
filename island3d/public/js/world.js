@@ -248,9 +248,10 @@ export function buildMesh(type) {
 /* --------------------- Dünya --------------------- */
 
 export class World {
-    constructor(scene, seed) {
+    constructor(scene, seed, opts = {}) {
         this.scene = scene;
         this.seed = seed;
+        this.low = !!opts.low;          // telefon/zayıf donanım modu
         this.nodes = [];
         this.nodeById = new Map();
         this.instances = {};
@@ -290,7 +291,7 @@ export class World {
         this.scene.add(this.sky);
 
         // Yıldızlar
-        const n = 700, pos = new Float32Array(n * 3);
+        const n = this.low ? 380 : 700, pos = new Float32Array(n * 3);
         for (let i = 0; i < n; i++) {
             const u = Math.random() * Math.PI * 2, v = Math.random() * 0.75;
             const r = MAP_SIZE * 1.25;
@@ -323,9 +324,13 @@ export class World {
         this.hemi = new THREE.HemisphereLight(0xbfe0f0, 0x4a6b3a, 1.1);
         this.scene.add(this.hemi);
 
+        // Hiçbir yüzey tamamen kararmasın (ağaç altları, kaya arkaları)
+        this.amb = new THREE.AmbientLight(0xffffff, 0.2);
+        this.scene.add(this.amb);
+
         this.sun = new THREE.DirectionalLight(0xfff0d0, 1.5);
         this.sun.castShadow = true;
-        this.sun.shadow.mapSize.set(2048, 2048);
+        this.sun.shadow.mapSize.set(this.low ? 1024 : 2048, this.low ? 1024 : 2048);
         const c = this.sun.shadow.camera;
         c.left = -70; c.right = 70; c.top = 70; c.bottom = -70; c.near = 1; c.far = 400;
         this.sun.shadow.bias = -0.0012;
@@ -335,7 +340,7 @@ export class World {
 
     /* ---------- Arazi ---------- */
     makeTerrain() {
-        const SEG = 190;
+        const SEG = this.low ? 120 : 190;
         const geo = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE, SEG, SEG);
         geo.rotateX(-Math.PI / 2);
         const pos = geo.attributes.position;
@@ -372,7 +377,8 @@ export class World {
 
     /* ---------- Deniz ---------- */
     makeWater() {
-        const geo = new THREE.PlaneGeometry(MAP_SIZE * 1.8, MAP_SIZE * 1.8, 96, 96);
+        const seg = this.low ? 56 : 96;
+        const geo = new THREE.PlaneGeometry(MAP_SIZE * 1.8, MAP_SIZE * 1.8, seg, seg);
         geo.rotateX(-Math.PI / 2);
         this.waterGeo = geo;
         this.waterBase = Float32Array.from(geo.attributes.position.array);
@@ -387,7 +393,7 @@ export class World {
     /* ---------- Yağmur ---------- */
     makeRain() {
         // Her damla kısa bir çizgi — nokta yerine çizgi çok daha inandırıcı duruyor
-        const n = 1800;
+        const n = this.low ? 800 : 1800;
         const pos = new Float32Array(n * 6);
         for (let i = 0; i < n; i++) {
             const x = (Math.random() - 0.5) * 80;
@@ -537,6 +543,8 @@ export class World {
         this.sun.color.setHSL(0.11, 0.55, 0.5 + Math.min(0.3, up));
         this.hemi.intensity = 0.28 + dayK * 0.85 * (cloudy ? 0.7 : 1);
         this.hemi.color.copy(bot);
+        this.amb.intensity = 0.10 + dayK * 0.24;
+        this.amb.color.copy(bot).lerp(new THREE.Color(0xffffff), 0.5);
 
         const px = playerPos.x, pz = playerPos.z;
         this.sun.position.set(px + sunDir.x * 130, playerPos.y + Math.max(18, sunDir.y * 150), pz + sunDir.z * 130);

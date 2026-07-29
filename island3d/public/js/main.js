@@ -15,9 +15,19 @@ import { sfx, audio } from './sfx.js';
 /* --------------------------- Sahne kurulumu --------------------------- */
 
 const canvas = document.getElementById('scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
+
+// Dokunmatik cihaz mı? Fare kilidi yerine parmakla bakma ve ekran düğmeleri kullanılır.
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches
+    || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+const lockPointer = () => { if (!IS_TOUCH) canvas.requestPointerLock(); };
+const unlockPointer = () => { if (!IS_TOUCH && document.pointerLockElement) document.exitPointerLock(); };
+
+const renderer = new THREE.WebGLRenderer({
+    canvas, antialias: !IS_TOUCH, powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(Math.min(devicePixelRatio, IS_TOUCH ? 1.3 : 2));
+renderer.shadowMap.enabled = !IS_TOUCH;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
@@ -41,7 +51,7 @@ const state = {
     gathering: null,
     holdMode: null,
     hitTimer: 0,
-    viewDist: 320,
+    viewDist: IS_TOUCH ? 210 : 320,
     sleeping: false,
 };
 
@@ -175,7 +185,7 @@ net.on('init', m => {
     state.seed = m.seed;
     state.time = m.time; state.day = m.day; state.weather = m.weather;
 
-    world = new World(scene, m.seed);
+    world = new World(scene, m.seed, { low: IS_TOUCH });
     world.time = m.time;
     world.weather = m.weather;
     world.onThunder = () => sfx.thunder();
@@ -198,8 +208,11 @@ net.on('init', m => {
     state.joined = true;
     ui.hideLogin();
     ui.showHud(true);
-    ui.center('🏝️ Adaya hoş geldin — sağ üstteki haritayı takip et');
-    canvas.requestPointerLock();
+    setupTouch();
+    ui.center(IS_TOUCH
+        ? '🏝️ Sağ tarafa parmakla sürükleyerek etrafa bak'
+        : '🏝️ Adaya hoş geldin — sağ üstteki haritayı takip et', 2600);
+    lockPointer();
 });
 
 net.on('state', m => {
@@ -253,8 +266,8 @@ net.on('nodes', m => { if (world) { world.updateNodes(m.list); rebuildBlockers()
 net.on('builds', m => { if (world) { world.setBuilds(m.list); rebuildBlockers(); } });
 net.on('inv', m => { ui.setInv(m.inv, m.tools, m.equipped); updateViewModel(m.equipped); });
 net.on('chest', m => ui.setChest(m.items));
-net.on('openChest', m => { ui.chestId = m.id; ui.openChest(m.items); document.exitPointerLock(); });
-net.on('openCraft', () => { ui.nearBench = true; ui.toggle('craftPanel'); document.exitPointerLock(); });
+net.on('openChest', m => { ui.chestId = m.id; ui.openChest(m.items); unlockPointer(); });
+net.on('openCraft', () => { ui.nearBench = true; ui.toggle('craftPanel'); unlockPointer(); });
 net.on('prog', m => ui.prog(m.v));
 
 net.on('sys', m => {
@@ -297,7 +310,7 @@ net.on('dead', m => {
     state.me.alive = false;
     ui.dead(m.reason);
     ui.pause(false);
-    document.exitPointerLock();
+    unlockPointer();
     sfx.die();
 });
 
@@ -306,7 +319,7 @@ net.on('respawned', m => {
     controls.pos.set(m.x, m.y + 1, m.z);
     controls.vel.set(0, 0, 0);
     ui.alive();
-    canvas.requestPointerLock();
+    lockPointer();
 });
 
 net.on('ghost', m => startGhost(m.id));
@@ -319,7 +332,7 @@ net.on('sleepState', m => {
 net.on('win', m => {
     ui.win(m.names, m.left, m.day);
     sfx.win();
-    document.exitPointerLock();
+    unlockPointer();
 });
 
 /* --------------------------- Yapı yerleştirme --------------------------- */
@@ -428,19 +441,19 @@ addEventListener('keydown', e => {
         }
         case 'KeyC':
             ui.nearBench = nearBench();
-            if (ui.toggle('craftPanel')) document.exitPointerLock();
-            else canvas.requestPointerLock();
+            if (ui.toggle('craftPanel')) unlockPointer();
+            else lockPointer();
             break;
         case 'Tab':
             e.preventDefault();
-            if (ui.toggle('bagPanel')) document.exitPointerLock();
-            else canvas.requestPointerLock();
+            if (ui.toggle('bagPanel')) unlockPointer();
+            else lockPointer();
             break;
         case 'KeyT':
         case 'Enter':
             e.preventDefault();
             ui.openChat();            // önce aç ki kilit bırakılınca duraklatma ekranı çıkmasın
-            document.exitPointerLock();
+            unlockPointer();
             break;
         case 'KeyF': {
             const tools = ui.tools;
@@ -453,7 +466,7 @@ addEventListener('keydown', e => {
             break;
         case 'Escape':
             if (state.ghost) { cancelGhost(); break; }
-            if (ui.anyPanelOpen()) { ui.closePanels(); ui.pause(false); canvas.requestPointerLock(); }
+            if (ui.anyPanelOpen()) { ui.closePanels(); ui.pause(false); lockPointer(); }
             else ui.pause(true);
             break;
         case 'Digit1': case 'Digit2': case 'Digit3':
@@ -475,6 +488,154 @@ document.addEventListener('click', e => {
     }
 });
 
+/* --------------------------- Mobil kontroller --------------------------- */
+
+const touchUI = document.getElementById('touchUI');
+const actBtn = document.getElementById('tAct');
+let touchReady = false;
+let rotateDismissed = false;
+
+function setupTouch() {
+    if (!IS_TOUCH || touchReady) return;
+    touchReady = true;
+
+    document.body.classList.add('touch');
+    touchUI.classList.remove('hidden');
+    controls.setTouchMode(true);
+
+    // Telefonda gölge ve uzak görüş varsayılan olarak kapalı
+    document.getElementById('setShadows').checked = false;
+    document.getElementById('setView').value = String(state.viewDist);
+    world.setViewDistance(state.viewDist);
+    camera.far = state.viewDist * 2.2;
+    camera.updateProjectionMatrix();
+
+    /* --- Sanal çubuk --- */
+    const stickEl = document.getElementById('stick');
+    const knobEl = document.getElementById('knob');
+    let stickId = null;
+
+    const stickSet = e => {
+        const r = stickEl.getBoundingClientRect();
+        const max = r.width / 2 - 8;
+        let dx = e.clientX - (r.left + r.width / 2);
+        let dy = e.clientY - (r.top + r.height / 2);
+        const d = Math.hypot(dx, dy);
+        if (d > max) { dx = (dx / d) * max; dy = (dy / d) * max; }
+        knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
+        controls.setStick(dx / max, dy / max);
+    };
+    const stickEnd = e => {
+        if (e.pointerId !== stickId) return;
+        stickId = null;
+        knobEl.style.transform = '';
+        controls.setStick(0, 0);
+    };
+    stickEl.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        stickId = e.pointerId;
+        stickEl.setPointerCapture(e.pointerId);
+        stickSet(e);
+    });
+    stickEl.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickSet(e); });
+    stickEl.addEventListener('pointerup', stickEnd);
+    stickEl.addEventListener('pointercancel', stickEnd);
+
+    /* --- Düğmeler --- */
+    const btn = (id, down, up) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); down(el); });
+        if (up) {
+            const end = e => { e.preventDefault(); up(el); };
+            el.addEventListener('pointerup', end);
+            el.addEventListener('pointercancel', end);
+            el.addEventListener('pointerleave', end);
+        }
+    };
+
+    btn('tAct', () => { sfx.unlock(); startHold(); }, () => stopHold());
+    btn('tUse', () => {
+        if (state.ghost) { state.ghost.ry += Math.PI / 4; return; }   // yerleştirirken döndür
+        const t = pick();
+        if (t && t.kind === 'build') { net.send({ t: 'use', id: t.ref.id }); sfx.pick(); }
+        else ui.center('Kullanılacak bir şey yok', 900);
+    });
+    btn('tJump', () => controls.requestJump());
+    btn('tRun', el => {
+        if (state.ghost) { cancelGhost(); return; }                   // yerleştirmeyi iptal et
+        const on = !controls.tSprint;
+        controls.setSprint(on);
+        el.classList.toggle('on', on);
+    });
+    btn('tCraft', () => { ui.nearBench = nearBench(); ui.toggle('craftPanel'); });
+    btn('tBag', () => ui.toggle('bagPanel'));
+    btn('tChat', () => ui.openChat());
+    btn('tTorch', () => {
+        if (!ui.tools.includes('torch')) { ui.center('Önce meşale yapmalısın', 1200); return; }
+        net.send({ t: 'equip', tool: ui.equipped === 'torch' ? null : 'torch' });
+    });
+    btn('tFull', () => toggleFullscreen());
+    btn('tMenu', () => { ui.closePanels(); ui.pause(true); });
+
+    checkOrientation();
+}
+
+function toggleFullscreen() {
+    const el = document.documentElement;
+    try {
+        if (!document.fullscreenElement) {
+            const p = el.requestFullscreen ? el.requestFullscreen() : null;
+            if (p && p.then) p.then(() => {
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(() => {});
+                }
+            }).catch(() => {});
+        } else if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    } catch (e) { /* tarayıcı izin vermezse önemli değil */ }
+}
+
+function checkOrientation() {
+    if (!IS_TOUCH) return;
+    const portrait = innerHeight > innerWidth;
+    document.getElementById('rotateHint')
+        .classList.toggle('hidden', !portrait || rotateDismissed || !state.joined);
+}
+addEventListener('resize', checkOrientation);
+addEventListener('orientationchange', () => setTimeout(checkOrientation, 300));
+document.getElementById('rotateOk').addEventListener('click', () => {
+    rotateDismissed = true;
+    document.getElementById('rotateHint').classList.add('hidden');
+});
+
+function setBtn(id, icon, label) {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.label === label) return;
+    el.dataset.label = label;
+    el.innerHTML = `${icon}<small>${label}</small>`;
+}
+
+/** Düğme etiketlerini bakılan şeye göre günceller. */
+function updateActionButton(target) {
+    if (!IS_TOUCH || !actBtn) return;
+
+    if (state.ghost) {
+        setBtn('tAct', '📍', 'KUR');
+        setBtn('tUse', '🔄', 'DÖNDÜR');
+        setBtn('tRun', '✖', 'İPTAL');
+        return;
+    }
+    setBtn('tUse', 'E', 'KULLAN');
+    setBtn('tRun', '🏃', 'KOŞ');
+
+    if (target && target.kind === 'node') setBtn('tAct', '⛏️', 'TOPLA');
+    else if (target && target.kind === 'animal') setBtn('tAct', '⚔️', 'SALDIR');
+    else if (canFish()) setBtn('tAct', '🎣', 'BALIK');
+    else setBtn('tAct', '✋', 'VUR');
+}
+
 /* --------------------------- Arayüz geri çağrıları --------------------------- */
 
 ui.init({
@@ -487,16 +648,16 @@ ui.init({
         );
     },
     respawn() { net.send({ t: 'respawn' }); },
-    resume() { ui.pause(false); canvas.requestPointerLock(); },
+    resume() { ui.pause(false); lockPointer(); },
     chat(text) { net.send({ t: 'chat', text }); },
-    chatClosed() { if (state.me.alive && !ui.anyPanelOpen()) canvas.requestPointerLock(); },
+    chatClosed() { if (state.me.alive && !ui.anyPanelOpen()) lockPointer(); },
     eat(item) { net.send({ t: 'eat', item }); sfx.eat(); },
     equip(tool) { net.send({ t: 'equip', tool: ui.equipped === tool ? null : tool }); },
     craft(id) {
         const r = RECIPES.find(x => x.id === id);
         net.send({ t: 'craft', id });
         if (r && r.kind !== 'build') sfx.craft();
-        if (r && r.kind === 'build') { ui.closePanels(); canvas.requestPointerLock(); }
+        if (r && r.kind === 'build') { ui.closePanels(); lockPointer(); }
     },
     chest(act, item, n) { net.send({ t: 'chest', id: ui.chestId, act, item, n }); },
     setting(key, val) {
@@ -632,7 +793,10 @@ function loop(now) {
         hint = `<b>Sol tık</b> — ${label}'na saldır`;
     }
     else if (canFish()) hint = '<b>Sol tık</b> — balık tut';
+    if (IS_TOUCH) hint = hint.replace(/<b>Sol tık<\/b> — /, '').replace(/<b>E<\/b> — /, '');
     ui.lookAt(hint);
+    updateActionButton(target);
+    if (touchReady) touchUI.classList.toggle('hidden', ui.anyPanelOpen() || !state.me.alive);
 
     ui.minimap(state.seed, { x: controls.pos.x, z: controls.pos.z, ry: controls.yaw },
         [...state.players.values()].map(e => e.data), world.buildList(), state.myId);

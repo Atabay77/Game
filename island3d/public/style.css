@@ -220,3 +220,143 @@ html, body {
 #waterOverlay { position: fixed; inset: 0; pointer-events: none; z-index: 7; opacity: 0;
                 background: linear-gradient(rgba(20, 80, 120, .45), rgba(10, 50, 90, .6));
                 transition: opacity .3s; }
+
+/* ==========================================================================
+   Dokunmatik kontroller
+   ========================================================================== */
+
+#touchUI { position: fixed; inset: 0; z-index: 9; pointer-events: none; }
+#touchUI.hidden { display: none; }
+
+#stick {
+    position: absolute; left: 20px; bottom: 20px; width: 132px; height: 132px;
+    border-radius: 50%; pointer-events: auto; touch-action: none;
+    background: rgba(255, 255, 255, .07); border: 2px solid rgba(255, 255, 255, .22);
+}
+#knob {
+    position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px;
+    border-radius: 50%; background: rgba(255, 240, 210, .38);
+    border: 2px solid rgba(255, 255, 255, .5);
+}
+
+.tbtn {
+    pointer-events: auto; touch-action: none; cursor: pointer; user-select: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 62px; height: 62px; border-radius: 50%;
+    font-size: 1.25rem; font-weight: bold; color: #fff2dc;
+    background: rgba(22, 32, 46, .68); border: 2px solid rgba(255, 220, 160, .4);
+    backdrop-filter: blur(4px);
+}
+.tbtn small { font-size: .46rem; letter-spacing: .08em; opacity: .8; margin-top: 1px; }
+.tbtn:active, .tbtn.on { background: rgba(90, 130, 165, .85); transform: scale(.94); }
+.tbtn.big { width: 86px; height: 86px; font-size: 1.7rem; border-color: rgba(255, 220, 160, .7); }
+.tbtn.tiny { width: 44px; height: 44px; font-size: 1.05rem; border-width: 1px; }
+
+#actBtns {
+    position: absolute; right: 18px; bottom: 20px;
+    display: grid; grid-template-columns: auto auto; gap: 10px; align-items: end;
+    justify-items: center;
+}
+#actBtns #tAct { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+#actBtns #tUse { grid-column: 1; grid-row: 1; }
+#actBtns #tJump { grid-column: 1; grid-row: 2; }
+#actBtns #tRun { grid-column: 1; grid-row: 3; }
+
+/* Menü düğmeleri sol üstte yatay bir sıra — aksiyon düğmelerine ve haritaya değmez */
+#menuBtns { position: absolute; left: 10px; top: 88px; display: flex; gap: 8px; }
+
+#rotateHint {
+    position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 30px;
+    background: rgba(6, 10, 18, .94); font-size: 1rem;
+}
+#rotateHint.hidden { display: none; }
+#rotateHint div { font-size: 3.4rem; }
+#rotateHint p { max-width: 320px; line-height: 1.6; opacity: .85; }
+
+/* ==========================================================================
+   Küçük ekran / mobil yerleşim
+   ========================================================================== */
+
+body.touch #hint { display: none; }
+body.touch #crosshair { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; }
+
+@media (max-width: 900px), (pointer: coarse) {
+    /* Can/açlık çubukları sol alttan sol üste taşınır, joystick yer açsın */
+    #vitals { top: 8px; left: 10px; bottom: auto; width: 148px; gap: 3px; }
+    .track { height: 7px; }
+    .vbar { line-height: 1; }
+    .vic { font-size: .78rem; width: 15px; }
+
+    #topRight { top: 8px; right: 8px; gap: 5px; }
+    #clock { font-size: .82rem; }
+    #weatherTxt { font-size: .68rem; }
+    #minimap { width: 96px; height: 96px; }
+    #playerList { font-size: .68rem; }
+
+    #hotbar { bottom: auto; top: 8px; left: 50%; gap: 4px; }
+    .hslot { width: 38px; height: 38px; font-size: 1.05rem; border-radius: 8px; }
+    .hslot .k { display: none; }
+
+    #quickBag { right: auto; left: 10px; bottom: 160px; max-width: 44vw;
+                justify-content: flex-start; }
+    .qs { padding: 3px 6px; font-size: .72rem; }
+
+    #chatBox { left: 10px; bottom: 210px; width: min(50vw, 260px); }
+    #chatLog { max-height: 92px; font-size: .72rem; }
+    #chatInput { font-size: .82rem; padding: 9px 12px; }
+
+    #lootFeed { bottom: auto; top: 58px; right: 112px; }
+    .loot { font-size: .74rem; padding: 2px 7px; }
+
+    #alerts { top: 54px; }
+    .alert { font-size: .7rem; padding: 3px 9px; }
+
+    #centerMsg { font-size: 1.05rem; top: 30%; white-space: normal; max-width: 70vw; }
+    #lookAt { font-size: .82rem; top: 58%; white-space: normal; max-width: 66vw; }
+    #progWrap { top: 64%; width: 150px; }
+
+    /* Panolar tam ekran */
+    .panel { width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0;
+             top: 0; left: 0; transform: none; padding: 14px 14px 90px; }
+    .recipeGrid { grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); gap: 8px; }
+    .rec { padding: 8px 10px; gap: 8px; }
+    .rec .ic { font-size: 1.5rem; width: 28px; }
+    .rec .nm { font-size: .86rem; }
+    .rec .ds { font-size: .68rem; }
+    .panel h2 { position: sticky; top: 0; background: rgba(10, 16, 26, .97);
+                padding: 6px 0; margin: 0 0 10px; z-index: 2; }
+    .panel .x { font-size: 2rem; padding: 0 10px; }
+    .chestCols { grid-template-columns: 1fr; }
+
+    .screen h1 { font-size: clamp(1.6rem, 8vw, 2.4rem); }
+    .sub { font-size: .86rem; }
+    .helpGrid { font-size: .76rem; }
+    .settings { font-size: .82rem; padding: 14px 16px; }
+    .settings input[type=range] { width: 120px; }
+}
+
+/* Çok alçak ekranlarda (yatay telefon) daha da sıkıştır */
+@media (max-height: 460px) {
+    #stick { width: 108px; height: 108px; left: 14px; bottom: 14px; }
+    #knob { width: 48px; height: 48px; margin: -24px 0 0 -24px; }
+    .tbtn { width: 52px; height: 52px; font-size: 1.05rem; }
+    .tbtn.big { width: 70px; height: 70px; font-size: 1.4rem; }
+    .tbtn.tiny { width: 36px; height: 36px; font-size: .85rem; }
+    #menuBtns { top: 84px; gap: 6px; }
+    #quickBag { bottom: 132px; max-width: 38vw; }
+    #chatBox { bottom: 172px; width: min(42vw, 220px); }
+    #chatLog { max-height: 56px; }
+    #actBtns { gap: 7px; bottom: 14px; right: 14px; }
+    #vitals { width: 128px; }
+    #minimap { width: 82px; height: 82px; }
+    #lootFeed { top: 50px; right: 98px; }
+}
+
+/* Dar dikey ekran: düğmeler biraz daha küçülsün, menü sırası alta kaymasın */
+@media (max-width: 430px) {
+    #menuBtns { top: 86px; gap: 5px; }
+    .tbtn.tiny { width: 40px; height: 40px; }
+    #quickBag { max-width: 60vw; }
+    #chatBox { width: 62vw; }
+}
