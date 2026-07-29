@@ -1,0 +1,14 @@
+# Render.com "Blueprint" — repoyu bağlayınca sunucuyu otomatik kurar.
+# Kullanımı: render.com → New → Blueprint → bu repoyu seç → Apply.
+services:
+  - type: web
+    name: issiz-ada-3d
+    runtime: node
+    plan: free
+    rootDir: island3d
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

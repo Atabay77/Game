@@ -67,6 +67,32 @@ Sıfırdan başlamak için o dosyayı sil.
 
 ---
 
+## İnternete açmak (arkadaşların farklı şehirde olsa da oynasın)
+
+Bilgisayarını açık tutmadan, herkesin tek bir linke tıklayıp girebilmesi için
+sunucuyu ücretsiz bir servise koyabilirsin. Repoda gerekli dosyalar hazır:
+`render.yaml` (Render) ve `Dockerfile` (Fly.io, Railway, Koyeb… hepsi çalışır).
+
+**Render ile (kredi kartı istemez):**
+
+1. <https://render.com> → GitHub hesabınla giriş yap.
+2. **New → Blueprint** → bu repoyu seç → **Apply**.
+3. Birkaç dakika sonra sana `https://issiz-ada-3d.onrender.com` gibi bir adres verir.
+   Linki arkadaşlarına gönder, herkes tarayıcıdan girsin.
+
+Ücretsiz planın iki kısıtı var: 15 dakika kimse girmezse sunucu uykuya dalar
+(ilk açılış ~30 saniye sürer) ve her yeniden başlatmada `world.save.json`
+sıfırlanır, yani dünya baştan kurulur. Oynarken sorun çıkarmaz.
+
+**Docker kullanan bir servisteysen** ek ayara gerek yok, `Dockerfile` yeterli:
+
+```bash
+docker build -t issiz-ada island3d
+docker run -p 3000:3000 issiz-ada
+```
+
+---
+
 ## Kontroller
 
 | Tuş | İş |
